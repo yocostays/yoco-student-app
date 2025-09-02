@@ -1,1 +1,1 @@
-# yoco-student-app
+# yoco-student-app/app

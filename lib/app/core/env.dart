@@ -1,0 +1,1 @@
+double screenwidth = 0;

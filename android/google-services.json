@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "245083939894",
+    "project_id": "yoco-stay",
+    "storage_bucket": "yoco-stay.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:245083939894:android:71e2aee05e09461b7a6497",
+        "android_client_info": {
+          "package_name": "com.colladome.yoco"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-aCms4aWyfkvrgjcrjE4fbQHeWUVSNRg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

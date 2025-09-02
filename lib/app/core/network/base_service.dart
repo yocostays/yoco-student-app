@@ -15,6 +15,7 @@ import 'package:yoco_stay_student/app/core/network/apiconstant.dart';
 class BaseService extends GetxService {
   SharedPreferences? sharedPreferences;
 
+
   BaseService();
 
   Future<dio_response.Response> getData({

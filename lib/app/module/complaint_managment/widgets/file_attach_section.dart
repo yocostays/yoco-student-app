@@ -50,18 +50,12 @@ class _AttachFileState extends State<AttachFile> {
     setState(() async {
       _secondsElapsed = 0;
       String? filePath = await audioRecorder.stop();
-      if (filePath != null) {
-        setState(() {
-          compliantController.isRecording = false;
-          compliantController.recordingPath = filePath;
-          compliantController.recordingStatus(true);
+      setState(() {
+        compliantController.isRecording = false;
+        compliantController.recordingPath = filePath;
+        compliantController.recordingStatus(true);
+      });
         });
-      } else {
-        setState(() {
-          compliantController.isRecording = false;
-        });
-      }
-    });
   }
 
   String formatTime(int seconds) {
@@ -162,18 +156,12 @@ class _AttachFileState extends State<AttachFile> {
                       await audioPlayer.play(AssetSource("endRecoding.mp3"));
                       audioPlayer.stop();
                       String? filePath = await audioRecorder.stop();
-                      if (filePath != null) {
-                        setState(() {
-                          compliantController.isRecording = false;
-                          compliantController.recordingPath = filePath;
-                          compliantController.recordingStatus(true);
-                        });
-                      } else {
-                        setState(() {
-                          compliantController.isRecording = false;
-                        });
-                      }
-                    } else {
+                      setState(() {
+                        compliantController.isRecording = false;
+                        compliantController.recordingPath = filePath;
+                        compliantController.recordingStatus(true);
+                      });
+                                        } else {
                       await audioPlayer.play(AssetSource("startRecoding.mp3"));
                       audioPlayer.stop();
                       if (await audioRecorder.hasPermission()) {

@@ -323,9 +323,9 @@ class _BookMealScreenState extends State<BookMealScreen> {
                                     firstDate: DateTime.now(),
                                     lastDate: DateTime(2101),
                                   );
-                                  if (picked != null && picked != _focusedDay) {
+                                  if (picked != _focusedDay) {
                                     setState(() {
-                                      _focusedDay = picked;
+                                      _focusedDay = picked!;
                                     });
                                   }
                                 },

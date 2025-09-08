@@ -250,7 +250,7 @@ class _PendingComplaintPageState extends State<PendingComplaintPage>
       builder: (BuildContext context) {
         return AlertDialog(
           content: Text(
-            "Are you sure you want to Remove This Complaint?",
+            "Are you sure you want to Remove This Leave?",
             style: Theme.of(context).textTheme.displayLarge?.copyWith(
                 color: AppColor.textblack,
                 fontSize: 16,

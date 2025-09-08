@@ -28,7 +28,8 @@ class LeaveFromPage extends StatefulWidget {
 }
 
 class _LeaveFromPageState extends State<LeaveFromPage> {
-  final LeaveController _leavecontroller = Get.put(LeaveController());
+final LeaveController _leavecontroller = 
+      Get.put(LeaveController(), permanent: true);
   DateTime _focusedDay = DateTime.now();
   // List<DateTime?> _selectedDay = [];
 
@@ -39,29 +40,31 @@ class _LeaveFromPageState extends State<LeaveFromPage> {
   late int todayIndex;
 
   @override
-  void initState() {
-    super.initState();
-    _lastScrollOffset = 0.0;
-    _leavecontroller.Clear();
+void initState() {
+  super.initState();
+  _lastScrollOffset = 0.0;
+
+  // Run after first frame
+  WidgetsBinding.instance.addPostFrameCallback((_) {
     _leavecontroller.GetCategoryListdata("leave");
-    _leavecontroller.firstdatetime.clear();
-    _leavecontroller.lastdatetime.clear();
 
     widget.leave == true
         ? _leavecontroller.selectedDay.clear()
         : _leavecontroller.selectedDay.add(DateTime.now());
-    lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
-    todayIndex = DateTime.now()
-        .difference(DateTime(_focusedDay.year, _focusedDay.month, 1))
-        .inDays;
 
-    // Scroll to today's date after the first frame is rendered
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToSelectedDate(todayIndex);
-    });
     _leavecontroller.totaldate.clear();
     _leavecontroller.Noofhours.clear();
-  }
+  });
+
+  lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
+  todayIndex = DateTime.now()
+      .difference(DateTime(_focusedDay.year, _focusedDay.month, 1))
+      .inDays;
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _scrollToSelectedDate(todayIndex);
+  });
+}
 
   @override
   void dispose() {

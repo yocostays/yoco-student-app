@@ -164,19 +164,24 @@ class _PendingStatusState extends State<PendingStatus> {
   final LeaveController _leavecontroller = Get.put(LeaveController());
   final ScrollController _scrollController = ScrollController();
 
-  @override
-  void initState() {
-    super.initState();
-    _leavecontroller.GetAllLeaveDataList("pending", "all", false);
+@override
+void initState() {
+  super.initState();
 
-    // Add scroll listener for pagination
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels ==
-          _scrollController.position.maxScrollExtent) {
-        _leavecontroller.GetAllLeaveDataList("pending", "all", true); // Load more data
-      }
-    });
-  }
+  // Defer API call until after first frame
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _leavecontroller.GetAllLeaveDataList("pending", "all", false);
+  });
+
+  // Scroll listener for pagination
+  _scrollController.addListener(() {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      _leavecontroller.GetAllLeaveDataList("pending", "all", true); // Load more
+    }
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +286,7 @@ class _PendingStatusState extends State<PendingStatus> {
       builder: (BuildContext context) {
         return AlertDialog(
           content: Text(
-            "Are you sure to remove this complaint?",
+            "Are you sure to remove this Leave?",
             style: Theme.of(context).textTheme.displayLarge?.copyWith(
                   color: AppColor.textblack,
                   fontSize: 16,

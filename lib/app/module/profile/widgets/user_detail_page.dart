@@ -137,19 +137,17 @@ class _userDataState extends State<userData> {
                                                         File? imageFile =
                                                             await MediaUtils
                                                                 .pickImage();
-                                                        if (imageFile != null) {
-                                                          imageCache.clear();
-                                                          imageCache
-                                                              .clearLiveImages();
-                                                          await profileController
-                                                              .PhotoUpdate(
-                                                                  imageFile,
-                                                                  profileController
-                                                                      .profileDatas
-                                                                      .value
-                                                                      .email);
-                                                        }
-                                                      },
+                                                        imageCache.clear();
+                                                        imageCache
+                                                            .clearLiveImages();
+                                                        await profileController
+                                                            .PhotoUpdate(
+                                                                imageFile,
+                                                                profileController
+                                                                    .profileDatas
+                                                                    .value
+                                                                    .email);
+                                                                                                            },
                                                     ),
                                                     ListTile(
                                                       leading: const Icon(
@@ -185,20 +183,18 @@ class _userDataState extends State<userData> {
                                                               : null;
                                                         });
 
-                                                        if (imageFile != null) {
-                                                          imageCache.clear();
-                                                          imageCache
-                                                              .clearLiveImages();
-                                                          await profileController
-                                                              .PhotoUpdate(
-                                                            imageFile,
-                                                            profileController
-                                                                .profileDatas
-                                                                .value
-                                                                .email,
-                                                          );
-                                                        }
-                                                      },
+                                                        imageCache.clear();
+                                                        imageCache
+                                                            .clearLiveImages();
+                                                        await profileController
+                                                            .PhotoUpdate(
+                                                          imageFile,
+                                                          profileController
+                                                              .profileDatas
+                                                              .value
+                                                              .email,
+                                                        );
+                                                                                                            },
                                                     ),
                                                   ],
                                                 );

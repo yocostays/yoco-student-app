@@ -5,7 +5,6 @@ import 'package:yoco_stay_student/app/Storage/get_storage.dart';
 import 'dart:async';
 import 'package:yoco_stay_student/app/core/values/colors.dart';
 import 'package:yoco_stay_student/app/module/onboarding/auth_controller.dart';
-import 'package:yoco_stay_student/app/module/onboarding/view/login_signup.dart';
 import 'package:yoco_stay_student/app/module/onboarding/view/skipable_screen.dart';
 import 'package:yoco_stay_student/app/widgets/custom_button.dart';
 
@@ -42,20 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
           String? Token = TokenStorage.getToken();
           print("token save : $Token");
 
-          Token == null
-              ? {
-                  if (TokenStorage.getLoged() == "Loged")
-                    {
-                      Get.to(const LoginSignUp()),
-                    }
-                  else
-                    {
-                      setState(() {
-                        authController.Registerbuttonshow(true);
-                      }),
-                    }
-                }
-              : authController.TokenValiditycheck();
+          authController.TokenValiditycheck();
         });
 
         // After the image fades out, fade in the button

@@ -19,7 +19,6 @@ class _LeaveRejectPageState extends State<LeaveRejectPage>
     with SingleTickerProviderStateMixin {
   final LeaveController _leavecontroller = Get.put(LeaveController());
   final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
-  // final List<int> _items = List<int>.generate(2, (int index) => index);
   late ScrollController _scrollController;
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
@@ -51,16 +50,13 @@ class _LeaveRejectPageState extends State<LeaveRejectPage>
       curve: Curves.easeIn,
     ));
 
-    // Instead of calling _controller.forward() here,
-    // we will delay it after the build phase
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _leavecontroller.getpasstabController.index == 0
-          ? _leavecontroller.GetRejectedLeaveListData(
-              "rejected", "leave", false) // true/false is dor loadmore data
-          : _leavecontroller.GetRejectedLeaveListData("rejected", "late coming",
-              false); // true/false is dor loadmore data
+          ? _leavecontroller.GetRejectedLeaveListData("rejected", "leave", false)
+          : _leavecontroller.GetRejectedLeaveListData("rejected", "late coming", false);
+
       Future.delayed(const Duration(milliseconds: 100), () {
-        _controller.forward(); // Trigger the animation after a slight delay
+        _controller.forward();
       });
     });
   }
@@ -86,14 +82,10 @@ class _LeaveRejectPageState extends State<LeaveRejectPage>
       setState(() {
         isLoadingMore = true;
       });
-      print("loade more");
 
-      // Fetch more data
       _leavecontroller.getpasstabController.index == 0
-          ? _leavecontroller.GetRejectedLeaveListData(
-              "rejected", "leave", true) // true/false is dor loadmore data
-          : _leavecontroller.GetRejectedLeaveListData("rejected", "late coming",
-              true); // true/false is dor loadmore data
+          ? _leavecontroller.GetRejectedLeaveListData("rejected", "leave", true)
+          : _leavecontroller.GetRejectedLeaveListData("rejected", "late coming", true);
 
       setState(() {
         isLoadingMore = false;
@@ -105,7 +97,6 @@ class _LeaveRejectPageState extends State<LeaveRejectPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Obx(() {
-        // Avoid unnecessary controller state updates within the build phase
         if (_leavecontroller.RejectedleaveListloading.value) {
           return AnimatedList(
             key: _listKey,
@@ -137,38 +128,17 @@ class _LeaveRejectPageState extends State<LeaveRejectPage>
                   ),
                 );
         } else {
-          // Ensure any AnimatedList actions happen after the widget is built
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            // If needed, you can perform additional checks or updates here
-          });
-
-          return _leavecontroller.getpasstabController.index == 1
-              ? AnimatedList(
-                  key: _listKey,
-                  initialItemCount: _leavecontroller.RejectedLeaveListData
-                      .length, // Ensure this matches the list size
-                  itemBuilder: (context, index, animation) {
-                    if (index < _leavecontroller.RejectedLeaveListData.length) {
-                      return _buildItem(context, index, animation);
-                    } else {
-                      return const SizedBox
-                          .shrink(); // Return an empty widget for invalid indices
-                    }
-                  },
-                )
-              : AnimatedList(
-                  key: _listKey,
-                  initialItemCount: _leavecontroller.RejectedLeaveListData
-                      .length, // Ensure this matches the list size
-                  itemBuilder: (context, index, animation) {
-                    if (index < _leavecontroller.RejectedLeaveListData.length) {
-                      return _buildItem(context, index, animation);
-                    } else {
-                      return const SizedBox
-                          .shrink(); // Empty widget for invalid indices
-                    }
-                  },
-                );
+          return AnimatedList(
+            key: _listKey,
+            initialItemCount: _leavecontroller.RejectedLeaveListData.length,
+            itemBuilder: (context, index, animation) {
+              if (index < _leavecontroller.RejectedLeaveListData.length) {
+                return _buildItem(context, index, animation);
+              } else {
+                return const SizedBox.shrink();
+              }
+            },
+          );
         }
       }),
     );
@@ -176,6 +146,24 @@ class _LeaveRejectPageState extends State<LeaveRejectPage>
 
   Widget _buildItem(
       BuildContext context, int index, Animation<double> animation) {
+    final leaveData = _leavecontroller.RejectedLeaveListData[index];
+
+    // ✅ Convert UTC → Local before formatting
+    DateTime? startDate = leaveData.startDate != null
+        ? DateTime.parse(leaveData.startDate!).toLocal()
+        : null;
+    DateTime? endDate = leaveData.endDate != null
+        ? DateTime.parse(leaveData.endDate!).toLocal()
+        : null;
+
+    String dateText = "";
+    if (leaveData.days == 1) {
+      dateText = startDate != null ? Utils.formatDatebynd(startDate) : "";
+    } else {
+      dateText =
+          "${startDate != null ? Utils.formatDatebynd(startDate) : ""} to ${endDate != null ? Utils.formatDatebynd(endDate) : ""}";
+    }
+
     return SlideTransition(
       position: _offsetAnimation,
       child: FadeTransition(
@@ -184,34 +172,22 @@ class _LeaveRejectPageState extends State<LeaveRejectPage>
           padding: const EdgeInsets.symmetric(horizontal: 7),
           child: Column(
             children: [
-              SizedBox(
-                height: 16.h,
-              ),
+              SizedBox(height: 16.h),
               TicketCard(
                 iconPath: widget.leave == true
                     ? "assets/images/drawer/leave.png"
                     : "assets/icons/late_entry.png",
-                title: _leavecontroller.RejectedLeaveListData[index].category ??
-                    _leavecontroller.RejectedLeaveListData[index].description ??
+                title: leaveData.category ??
+                    leaveData.description ??
                     "".toUpperCase(),
-                ticketId:
-                    _leavecontroller.RejectedLeaveListData[index].ticketId,
-                // date: _leavecontroller.RejectedLeaveListData[index].days == 1
-                //     ? '${Utils.formatDatebynd(DateTime.parse(_leavecontroller.RejectedLeaveListData[index].startDate ?? ""))}'
-                //     : '${Utils.formatDatebynd(DateTime.parse(_leavecontroller.RejectedLeaveListData[index].startDate ?? ""))} to ${Utils.formatDatebynd(DateTime.parse(_leavecontroller.LeaveListData[index].endDate ?? ""))} ',
-                date: _leavecontroller.RejectedLeaveListData[index].days == 1
-                    ? Utils.formatDatebynd(DateTime.parse(_leavecontroller
-                            .RejectedLeaveListData[index].startDate ??
-                        ""))
-                    : '${Utils.formatDatebynd(DateTime.parse(_leavecontroller.RejectedLeaveListData[index].startDate ?? ""))} to ${Utils.formatDatebynd(DateTime.parse(_leavecontroller.RejectedLeaveListData[index].endDate ?? ""))} ',
-
+                ticketId: leaveData.ticketId,
+                date: dateText,
                 dateFontSize: 12,
-                time: _leavecontroller.RejectedLeaveListData[index].leaveType ==
-                        "late coming"
-                    ? '${_leavecontroller.RejectedLeaveListData[index].hours} Hours'
-                    : _leavecontroller.RejectedLeaveListData[index].days == 1
-                        ? '${_leavecontroller.RejectedLeaveListData[index].days} Day'
-                        : '${_leavecontroller.RejectedLeaveListData[index].days} Days',
+                time: leaveData.leaveType == "late coming"
+                    ? '${leaveData.hours} Hours'
+                    : leaveData.days == 1
+                        ? '${leaveData.days} Day'
+                        : '${leaveData.days} Days',
                 timeFontSize: 12,
               ),
             ],
@@ -233,9 +209,7 @@ class _LeaveRejectPageState extends State<LeaveRejectPage>
             children: [
               Column(
                 children: [
-                  SizedBox(
-                    height: 16.h,
-                  ),
+                  SizedBox(height: 16.h),
                   CustomShimmer(
                     height: MediaQuery.of(context).size.height * 0.14,
                   )

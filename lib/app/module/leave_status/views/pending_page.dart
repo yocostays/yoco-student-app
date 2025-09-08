@@ -21,56 +21,41 @@ class LeavePendingPage extends StatefulWidget {
 class _LeavePendingPageState extends State<LeavePendingPage>
     with SingleTickerProviderStateMixin {
   final LeaveController _leavecontroller = Get.put(LeaveController());
-  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
-  // final List<int> _items = List<int>.generate(6, (int index) => index);
   late ScrollController _scrollController;
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _fadeAnimation;
-  bool isLoadingMore = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _leavecontroller.getpasstabController.index == 0
-        ? _leavecontroller.GetLeaveDataList(
-            "pending", "leave", false) // true is load more option
-        : _leavecontroller.GetLeaveDataList(
-            "pending", "late coming", false); // true is load more option
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
+ @override
+void initState() {
+  super.initState();
 
-    _scrollController = ScrollController()..addListener(_scrollListener);
+  _controller = AnimationController(
+    duration: const Duration(milliseconds: 500),
+    vsync: this,
+  );
 
-    _offsetAnimation = Tween<Offset>(
-      begin: const Offset(0.0, 0.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    ));
+  _scrollController = ScrollController()..addListener(_scrollListener);
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeIn,
-    ));
+  _offsetAnimation = Tween<Offset>(
+    begin: const Offset(0.0, 0.5),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _leavecontroller.getpasstabController.index == 0
-          ? _leavecontroller.GetLeaveDataList(
-              "pending", "leave", false) // true is load more option
-          : _leavecontroller.GetLeaveDataList(
-              "pending", "late coming", false); // true is load more option
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _controller.forward(); // Trigger the animation after a slight delay
-      });
-    });
-  }
+  _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
+      .animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+
+  // ✅ Run after build
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (_leavecontroller.getpasstabController.index == 0) {
+      _leavecontroller.getLeaveDataList("pending", "leave", loadMore: false);
+    } else {
+      _leavecontroller.getLeaveDataList("pending", "late coming", loadMore: false);
+    }
+
+    _controller.forward();
+  });
+}
 
   @override
   void dispose() {
@@ -80,31 +65,21 @@ class _LeavePendingPageState extends State<LeavePendingPage>
   }
 
   void _scrollListener() {
-    if (_scrollController.position.pixels ==
+    if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent) {
-      Future.delayed(const Duration(seconds: 1), () {
-        _loadMoreData();
-      });
+      _loadMoreData();
     }
   }
 
   Future<void> _loadMoreData() async {
-    if (!isLoadingMore) {
-      setState(() {
-        isLoadingMore = true;
-      });
-      print("loade more");
-
-      // Fetch more data
-      _leavecontroller.getpasstabController.index == 0
-          ? _leavecontroller.GetLeaveDataList(
-              "pending", "leave", true) // true is load more option
-          : _leavecontroller.GetLeaveDataList(
-              "pending", "late coming", true); // true is load more option
-
-      setState(() {
-        isLoadingMore = false;
-      });
+    if (_leavecontroller.hasMoreData.value &&
+        !_leavecontroller.isMoreLoading.value &&
+        !_leavecontroller.leaveListloading.value) {
+      if (_leavecontroller.getpasstabController.index == 0) {
+        await _leavecontroller.getLeaveDataList("pending", "leave", loadMore: true);
+      } else {
+        await _leavecontroller.getLeaveDataList("pending", "late coming", loadMore: true);
+      }
     }
   }
 
@@ -117,158 +92,122 @@ class _LeavePendingPageState extends State<LeavePendingPage>
           backgroundColor: AppColor.primary,
           onPressed: () async {
             _leavecontroller.getpasstabController.index == 0
-                ? Get.to(() => const LeaveFromPage(
-                      leave: true,
-                    ))
-                : Get.to(() => const LeaveFromPage(
-                      leave: false,
-                    ));
+                ? Get.to(() => const LeaveFromPage(leave: true))
+                : Get.to(() => const LeaveFromPage(leave: false));
           },
-          child: Icon(
-            Icons.add,
-            size: 30.h,
-            color: Colors.white,
-          ),
+          child: Icon(Icons.add, size: 30.h, color: Colors.white),
         ),
       ),
       body: Obx(() {
-        // Avoid unnecessary controller state updates within the build phase
         if (_leavecontroller.leaveListloading.value) {
-          return AnimatedList(
-            key: _listKey,
-            initialItemCount: 8,
-            itemBuilder: (context, index, animation) {
-              return _loderItem(context, index, animation);
-            },
+          return ListView.builder(
+            itemCount: 8,
+            itemBuilder: (context, index) => _loderItem(context, index),
           );
-        } else if (_leavecontroller.LeaveListData.isEmpty) {
-          return _leavecontroller.getpasstabController.index == 1
-              ? Center(
-                  child: Text(
-                    "There no Late coming Data.",
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColor.primary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                )
-              : Center(
-                  child: Text(
-                    "No Leave Application Found.",
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColor.primary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                );
-        } else {
-          // Ensure any AnimatedList actions happen after the widget is built
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            // If needed, you can perform additional checks or updates here
-          });
-
-          return _leavecontroller.getpasstabController.index == 1
-              ? AnimatedList(
-                  key: _listKey,
-                  initialItemCount: _leavecontroller.LeaveListData
-                      .length, // Ensure this matches the list size
-                  itemBuilder: (context, index, animation) {
-                    if (index < _leavecontroller.LeaveListData.length) {
-                      return _buildItem(context, index, animation);
-                    } else {
-                      return const SizedBox
-                          .shrink(); // Return an empty widget for invalid indices
-                    }
-                  },
-                )
-              : AnimatedList(
-                  key: _listKey,
-                  initialItemCount: _leavecontroller.LeaveListData
-                      .length, // Ensure this matches the list size
-                  itemBuilder: (context, index, animation) {
-                    if (index < _leavecontroller.LeaveListData.length) {
-                      return _buildItem(context, index, animation);
-                    } else {
-                      return const SizedBox
-                          .shrink(); // Return an empty widget for invalid indices
-                    }
-                  },
-                );
         }
+
+        if (_leavecontroller.LeaveListData.isEmpty) {
+          return Center(
+            child: Text(
+              _leavecontroller.getpasstabController.index == 1
+                  ? "There is no Late coming Data."
+                  : "No Leave Application Found.",
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColor.primary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          controller: _scrollController,
+          itemCount: _leavecontroller.LeaveListData.length + 1,
+          itemBuilder: (context, index) {
+            if (index < _leavecontroller.LeaveListData.length) {
+              return _buildItem(context, index);
+            } else {
+              if (_leavecontroller.isMoreLoading.value) {
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (!_leavecontroller.hasMoreData.value) {
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Center(
+                    child: Text(
+                      "No more data",
+                      style: TextStyle(
+                        color: AppColor.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            }
+          },
+        );
       }),
     );
   }
 
-  Widget _buildItem(
-      BuildContext context, int index, Animation<double> animation) {
+  Widget _buildItem(BuildContext context, int index) {
+    final item = _leavecontroller.LeaveListData[index];
+
+    final startDate = item.startDate != null
+        ? DateTime.parse(item.startDate!).toLocal()
+        : null;
+    final endDate = item.endDate != null
+        ? DateTime.parse(item.endDate!).toLocal()
+        : null;
+
     return SlideTransition(
       position: _offsetAnimation,
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
           child: Stack(
             children: [
-              Column(
-                children: [
-                  SizedBox(
-                    height: 16.h,
-                  ),
-                  InkWell(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return LeaveStatusDilogBox(
-                            leaveId:
-                                _leavecontroller.LeaveListData[index].sId ?? "",
-                          );
-                        },
-                      );
-                    },
-                    child: TicketCard(
-                      iconPath: widget.leave == true
-                          ? "assets/images/drawer/leave.png"
-                          : "assets/icons/late_entry.png",
-                      title: _leavecontroller.LeaveListData[index].category ??
-                          _leavecontroller.LeaveListData[index].description ??
-                          "".toUpperCase(),
-                      ticketId: _leavecontroller.LeaveListData[index].ticketId,
-                      date: _leavecontroller.LeaveListData[index].days == 1
-                          ? Utils.formatDatebynd(DateTime.parse(
-                              _leavecontroller.LeaveListData[index].startDate ??
-                                  ""))
-                          : '${Utils.formatDatebynd(DateTime.parse(_leavecontroller.LeaveListData[index].startDate ?? ""))} to ${Utils.formatDatebynd(DateTime.parse(_leavecontroller.LeaveListData[index].endDate ?? ""))} ',
-                      dateFontSize: 12,
-                      time: _leavecontroller.LeaveListData[index].leaveType ==
-                              "late coming"
-                          ? '${_leavecontroller.LeaveListData[index].hours} Hours'
-                          : _leavecontroller.LeaveListData[index].days == 1
-                              ? '${_leavecontroller.LeaveListData[index].days} Day'
-                              : '${_leavecontroller.LeaveListData[index].days} Days',
-                      timeFontSize: 12,
-                    ),
-                  ),
-                ],
+              InkWell(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) =>
+                        LeaveStatusDilogBox(leaveId: item.sId ?? ""),
+                  );
+                },
+                child: TicketCard(
+                  iconPath: widget.leave
+                      ? "assets/images/drawer/leave.png"
+                      : "assets/icons/late_entry.png",
+                  title: item.category ??
+                      item.description ??
+                      "".toUpperCase(),
+                  ticketId: item.ticketId,
+                  date: item.days == 1
+                      ? Utils.formatDatebynd(startDate!)
+                      : '${Utils.formatDatebynd(startDate!)} to ${Utils.formatDatebynd(endDate!)}',
+                  dateFontSize: 12,
+                  time: item.leaveType == "late coming"
+                      ? '${item.hours} Hours'
+                      : item.days == 1
+                          ? '${item.days} Day'
+                          : '${item.days} Days',
+                  timeFontSize: 12,
+                ),
               ),
               Positioned(
                 right: 10,
                 top: 25,
                 child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _showLogoutDialog(context,
-                          _leavecontroller.LeaveListData[index].sId ?? "");
-                    });
-                  },
-                  child: Icon(
-                    Icons.close,
-                    size: 25,
-                    weight: 20.sp,
-                    color: AppColor.primary,
-                  ),
+                  onTap: () => _showLogoutDialog(context, item.sId ?? ""),
+                  child: Icon(Icons.close, size: 25, color: AppColor.primary),
                 ),
               ),
             ],
@@ -278,42 +217,11 @@ class _LeavePendingPageState extends State<LeavePendingPage>
     );
   }
 
-  Widget _loderItem(
-      BuildContext context, int index, Animation<double> animation) {
-    return SlideTransition(
-      position: _offsetAnimation,
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 7),
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  SizedBox(
-                    height: 16.h,
-                  ),
-                  CustomShimmer(
-                    height: MediaQuery.of(context).size.height * 0.14,
-                  )
-                ],
-              ),
-              Positioned(
-                right: 10,
-                top: 25,
-                child: InkWell(
-                  onTap: () {},
-                  child: Icon(
-                    Icons.close,
-                    size: 25,
-                    weight: 20.sp,
-                    color: AppColor.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+  Widget _loderItem(BuildContext context, int index) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+      child: CustomShimmer(
+        height: MediaQuery.of(context).size.height * 0.14,
       ),
     );
   }
@@ -321,39 +229,34 @@ class _LeavePendingPageState extends State<LeavePendingPage>
   void _showLogoutDialog(BuildContext context, String id) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: Text(
-            "Are you Sure to Remove This Complaint?",
-            style: Theme.of(context).textTheme.displayLarge?.copyWith(
+      builder: (context) => AlertDialog(
+        content: Text(
+          "Are you Sure to Remove This Leave?",
+          style: Theme.of(context).textTheme.displayLarge?.copyWith(
                 color: AppColor.textblack,
                 fontSize: 16,
-                fontWeight: FontWeight.bold),
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        actions: [
+          CustomButton(
+            Title: "Yes",
+            ontap: () => _leavecontroller.RemoveLeave(id),
+            width: 100.w,
+            BoxColor: AppColor.primary,
+            textcolor: AppColor.white,
+            Textsize: 20,
           ),
-          actions: [
-            CustomButton(
-              Title: "Yes",
-              ontap: () async {
-                _leavecontroller.RemoveLeave(id);
-              },
-              width: 100.w,
-              BoxColor: AppColor.primary,
-              textcolor: AppColor.white,
-              Textsize: 20,
-            ),
-            CustomButton(
-              Title: "No",
-              ontap: () {
-                Get.back();
-              },
-              width: 100.w,
-              BoxColor: AppColor.primary,
-              textcolor: AppColor.white,
-              Textsize: 20,
-            ),
-          ],
-        );
-      },
+          CustomButton(
+            Title: "No",
+            ontap: () => Get.back(),
+            width: 100.w,
+            BoxColor: AppColor.primary,
+            textcolor: AppColor.white,
+            Textsize: 20,
+          ),
+        ],
+      ),
     );
   }
 }

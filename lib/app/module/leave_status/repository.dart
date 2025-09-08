@@ -12,28 +12,32 @@ import 'package:yoco_stay_student/app/module/get_pass/model/response/get_out-tic
 import 'package:yoco_stay_student/app/module/leave_status/models/leave_category_model.dart';
 import 'package:yoco_stay_student/app/module/leave_status/models/leave_list_model.dart';
 import 'package:yoco_stay_student/app/module/leave_status/models/response/leave_category_response.dart';
-import 'package:yoco_stay_student/app/module/leave_status/models/response/leave_list_response.dart';
 import 'package:yoco_stay_student/app/module/leave_status/models/response/single_leave_response.dart';
 import 'package:yoco_stay_student/app/module/leave_status/models/single_leave_status_model.dart';
 import 'package:yoco_stay_student/app/module/onboarding/view/login_signup.dart';
 import 'package:yoco_stay_student/app/routes/routes.dart';
 import 'package:yoco_stay_student/app/utils/utils.dart';
 
-class LeaveController extends GetxController {
+class LeaveController extends GetxController
+     {
   SharedPreferences? prefs;
+
+  //<================= Common Tabbar =================>
+  late TabController getpasstabController;
+
+
+  //<================= Common Controllers & Variables =================>
+  // NOTE: hold possibly-null items, but we'll always clean/normalize before using.
   var selectedDay = <DateTime?>[].obs;
   RxInt tabvalue = 1.obs;
   final TextEditingController discription = TextEditingController();
-  late TabController getpasstabController;
-  late TabController tabController;
-  RxInt selectedindex = 0.obs; // Make this an Rx variable to observe changes
 
+  RxInt selectedindex = 0.obs; // observed tab index
 
-  //<================================ Get Category data api =========================
-  RxList<LeaveCategoryModel> Categorydata = RxList<LeaveCategoryModel>();
-  RxInt Textlength = 0.obs;
-
+  //<================= Category =================>
+  RxList<LeaveCategoryModel> Categorydata = <LeaveCategoryModel>[].obs;
   RxBool leavecategoryloading = false.obs;
+  RxInt Textlength = 0.obs;
 
   Future<void> GetCategoryListdata(String type) async {
     leavecategoryloading(true);
@@ -41,15 +45,11 @@ class LeaveController extends GetxController {
       var CatogoryList = await GetCategoryList(type);
       if (CatogoryList.data != null) {
         Categorydata.assignAll(CatogoryList.data!);
-        leavecategoryloading(false);
       }
-      leavecategoryloading(false);
     } catch (e) {
-      print("Error fetching draft jobs: $e");
-      leavecategoryloading(false);
+      // ignore
     } finally {
       leavecategoryloading(false);
-      // isDraftJobListLoading.value = false;
     }
   }
 
@@ -63,9 +63,7 @@ class LeaveController extends GetxController {
       );
       return LeaveCategoryResponse.fromJson(response.data);
     } on DioException catch (e) {
-      print(e.response);
-      print("API Error: ${e.message} - ${e.response?.data}");
-
+      _handleUnauthorized(e);
       return LeaveCategoryResponse(
         statusCode: 500,
         message: e.message,
@@ -74,252 +72,381 @@ class LeaveController extends GetxController {
     }
   }
 
-  //<================================== Submit Leave Application =====================
-  TextEditingController selectDaterang = TextEditingController();
-  TextEditingController firstdateDate = TextEditingController();
-  TextEditingController firstdatetime = TextEditingController();
-  TextEditingController lastdateDate = TextEditingController();
-  TextEditingController lastdatetime = TextEditingController();
-  TextEditingController totaldate = TextEditingController();
-  TextEditingController selectedPurpose = TextEditingController();
+  //<================= Submit Leave =================>
+  final TextEditingController selectDaterang = TextEditingController();
+  final TextEditingController firstdateDate = TextEditingController();
+  final TextEditingController firstdatetime = TextEditingController();
+  final TextEditingController lastdateDate = TextEditingController();
+  final TextEditingController lastdatetime = TextEditingController();
+  final TextEditingController totaldate = TextEditingController();
+  final TextEditingController selectedPurpose = TextEditingController();
   RxBool LeaveCreating = false.obs;
-  SubmitLeaveApplication() async {
-    prefs = await SharedPreferences.getInstance();
 
-    if (selectedDay.isEmpty) {
-      print("No days selected for leave application");
+  Future<void> SubmitLeaveApplication() async {
+  prefs = await SharedPreferences.getInstance();
+
+  // Clean/sort/normalize selected days
+  final days = _normalizedSelectedDays();
+  if (days.isEmpty) {
+    Utils.showToast(
+      message: "No days selected for leave application.",
+      gravity: ToastGravity.BOTTOM,
+      textColor: Colors.white,
+      fontsize: 16,
+    );
+    return;
+  }
+
+  final DateTime startDate = days.first;
+  final DateTime endDate = days.last;
+
+  // Adjusted calculation: exclude last day if required
+  final int daysCount = calculateDaysDifference(startDate, endDate);
+
+  try {
+    LeaveCreating(true);
+
+    final body = {
+      "categoryId": selectedPurpose.text,
+      // Always send UTC to avoid backend shifting date
+      "startDate": startDate.toUtc().toIso8601String(),
+      "endDate": endDate.toUtc().toIso8601String(),
+      "days": daysCount,
+      "description": discription.text.trim(),
+    };
+
+    debugPrint("Body "
+        "\n╟ categoryId: ${body["categoryId"]}"
+        "\n╟ startDate: ${body["startDate"]}"
+        "\n╟ endDate: ${body["endDate"]}"
+        "\n╟ days: ${body["days"]}"
+        "\n╟ description: ${body["description"]}");
+
+    final response = await BaseService().postData(
+      endPoint: ApiRoutes().SubmitLeaveCategory,
+      isTokenRequired: true,
+      body: body,
+    );
+
+    if (response.data['statusCode'] == 200) {
+      // clear all controllers after success
+      Clear();
+
+      // refresh leave list
+      getLeaveDataList("pending", "leave", loadMore: false);
+
+      // navigate back
+      Get.offAllNamed(AppRoute.leavepage);
+    }
+  } on DioException catch (e) {
+    _handleUnauthorized(e);
+
+    if (e.response?.data["statusCode"] == 400) {
       Utils.showToast(
-        message: "No days selected for leave application.",
+        message: e.response?.data["message"],
         gravity: ToastGravity.BOTTOM,
         textColor: Colors.white,
         fontsize: 16,
       );
-      return; // Stop the function if no days are selected
+    }
+  } finally {
+    LeaveCreating(false);
+  }
+}
+
+  //<================= Late Coming =================>
+  final TextEditingController Noofhours = TextEditingController();
+  final TextEditingController TimeRange = TextEditingController();
+  DateTime? StartTime;
+  DateTime? EndTime;
+  final TextEditingController personname = TextEditingController();
+  final TextEditingController contactnumber = TextEditingController();
+  final TextEditingController DayoutCetegory = TextEditingController();
+  RxBool LateComingCreating = false.obs;
+
+  Future<void> SubmitLateComingApplication() async {
+    prefs = await SharedPreferences.getInstance();
+
+    if (StartTime == null || EndTime == null) {
+      Utils.showToast(
+        message: "Please select a valid time range.",
+        gravity: ToastGravity.BOTTOM,
+        textColor: Colors.white,
+        fontsize: 16,
+      );
+      return;
+    }
+
+    if (discription.text.isEmpty) {
+      Utils.showToast(
+        message: "Please provide a reason for leave.",
+        gravity: ToastGravity.BOTTOM,
+        textColor: Colors.white,
+        fontsize: 16,
+      );
+      return;
+    }
+
+    if (Noofhours.text.isEmpty) {
+      Utils.showToast(
+        message: "Time is required.",
+        gravity: ToastGravity.BOTTOM,
+        textColor: Colors.white,
+        fontsize: 16,
+      );
+      return;
+    }
+
+    // you previously required a day selection; keep as-is
+    if (_normalizedSelectedDays().isEmpty) {
+      Utils.showToast(
+        message: "Please select a day.",
+        gravity: ToastGravity.BOTTOM,
+        textColor: Colors.white,
+        fontsize: 16,
+      );
+      return;
     }
 
     try {
-      LeaveCreating(true);
-      var response = await BaseService().postData(
-        endPoint: ApiRoutes().SubmitLeaveCategory,
+      LateComingCreating(true);
+
+      final body = {
+        "leaveType": "late coming",
+        "startDate": DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(StartTime!),
+        "endDate": DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(EndTime!),
+        "hours": Noofhours.text.trim().replaceAll(" ", ""),
+        "description": discription.text.trim(),
+      };
+
+      debugPrint("Submitting late coming request: $body");
+
+      final response = await BaseService().postData(
+        endPoint: ApiRoutes().CreateDayoutapllication,
         isTokenRequired: true,
-        body: {
-          "categoryId": selectedPurpose.text,
-          "startDate": "${selectedDay.first}",
-          "endDate": "${selectedDay.last}",
-          "days": selectedDay.length,
-          "description": discription.text
-        },
+        body: body,
       );
 
       if (response.data['statusCode'] == 200) {
-        Clear();
-        GetLeaveDataList("pending", "leave", false); // true is load more option
-        Get.offAllNamed(AppRoute.leavepage);
-        LeaveCreating(false);
-      }
-    } on DioException catch (e) {
-      if (e.response?.data["statusCode"] == 401) {
-        await TokenStorage.removeToken();
-        await TokenStorage.removeusername();
-        await TokenStorage.removeuserid();
-        Get.offAll(const LoginSignUp());
-      }
-
-      print(e.response);
-      print("API Error: ${e.message} - ${e.response?.data}");
-      if (e.response?.data["statusCode"] == 400) {
         Utils.showToast(
-          message: e.response?.data["message"],
-          gravity: ToastGravity.BOTTOM,
+          message: response.data['message'] ?? "Leave submitted successfully",
+          gravity: ToastGravity.CENTER,
           textColor: Colors.white,
           fontsize: 16,
         );
+        Clear();
+        getLeaveDataList("pending", "late coming", loadMore: false);
+        Get.back();
       }
-      LeaveCreating(false);
+    } on DioException catch (e) {
+      _handleUnauthorized(e);
+      final msg = e.response?.data?["message"] ?? "Something went wrong";
+      Utils.showToast(
+        message: msg,
+        gravity: ToastGravity.CENTER,
+        textColor: Colors.white,
+        fontsize: 16,
+      );
+    } finally {
+      LateComingCreating(false);
     }
   }
 
-  //<================================== Get LeaveList data ================================
-  RxList<LeaveListModel> LeaveListData = RxList<LeaveListModel>();
+  //<================= Private Paged helper =================>
+  static const int _pageSize = 5;
+
+  Future<_PagedLeave> _fetchLeavePage(
+      String status, String section, int page) async {
+    prefs = await SharedPreferences.getInstance();
+    try {
+      final response = await BaseService().getData(
+        endPoint:
+            '${ApiRoutes().LeaveListData}?page=$page&limit=$_pageSize&status=$status&type=$section',
+        isTokenRequired: true,
+      );
+      final data = response.data;
+      final list = (data['data'] as List?)
+              ?.map((e) => LeaveListModel.fromJson(e))
+              .toList() ??
+          <LeaveListModel>[];
+      final count = data['count'] is int ? data['count'] as int : null;
+      return _PagedLeave(list, count);
+    } on DioException catch (e) {
+      _handleUnauthorized(e);
+      return _PagedLeave(<LeaveListModel>[], null);
+    }
+  }
+
+  //<================= Pending (leave / late coming) =================>
+  RxList<LeaveListModel> LeaveListData = <LeaveListModel>[].obs;
   RxInt pendingpage = 1.obs;
   RxBool leaveListloading = false.obs;
+  RxBool isMoreLoading = false.obs;
+  RxBool hasMoreData = true.obs;
+  RxInt totalCount = 0.obs;
 
-  Future<void> GetLeaveDataList(
-      String status, String Secttion, bool? loadmore) async {
-    leaveListloading(true);
-    loadmore == true ? pendingpage.value++ : pendingpage.value = 1;
-    try {
-      var CatogoryList =
-          await LeaveDataListGet(status, Secttion, pendingpage.value);
-      if (CatogoryList.data != null) {
-        loadmore == true
-            ? LeaveListData.addAll(CatogoryList.data!)
-            : {
-                LeaveListData.clear(),
-                LeaveListData.assignAll(CatogoryList.data!)
-              };
-        leaveListloading(false);
-      }
-      leaveListloading(false);
-    } catch (e) {
-      print("Error fetching draft jobs: $e");
-      leaveListloading(false);
-    } finally {
-      leaveListloading(false);
-      // isDraftJobListLoading.value = false;
-    }
+  Future<void> getLeaveDataList(String status, String section,
+      {bool loadMore = false}) async {
+    await _handlePagedList(
+      status: status,
+      section: section,
+      page: pendingpage,
+      list: LeaveListData,
+      totalCount: totalCount,
+      loading: leaveListloading,
+      isMoreLoading: isMoreLoading,
+      hasMoreData: hasMoreData,
+      loadMore: loadMore,
+    );
   }
 
-  Future<LeaveListResponse> LeaveDataListGet(
-      String status, String Section, int pagenumber) async {
-    prefs = await SharedPreferences.getInstance();
-    try {
-      var response = await BaseService().getData(
-        endPoint:
-            '${ApiRoutes().LeaveListData}?page=$pagenumber&limit=10&status=$status&type=$Section',
-        isTokenRequired: true,
-      );
-      return LeaveListResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      if (e.response?.data["statusCode"] == 401) {
-        await TokenStorage.removeToken();
-        await TokenStorage.removeusername();
-        await TokenStorage.removeuserid();
-        Get.offAll(const LoginSignUp());
-      }
-      print(e.response);
-      print("API Error: ${e.message} - ${e.response?.data}");
-
-      return LeaveListResponse(
-        statusCode: 500,
-        message: e.message,
-        data: null,
-      );
-    }
-  }
-
-  //<================================== Get Rejected LeaveList data ================================
-  RxList<LeaveListModel> RejectedLeaveListData = RxList<LeaveListModel>();
+  //<================= Rejected =================>
+  RxList<LeaveListModel> RejectedLeaveListData = <LeaveListModel>[].obs;
   RxInt Rejectectedpage = 1.obs;
   RxBool RejectedleaveListloading = false.obs;
+  RxBool rejectedIsMoreLoading = false.obs;
+  RxBool rejectedHasMoreData = true.obs;
+  RxInt rejectedTotalCount = 0.obs;
 
   Future<void> GetRejectedLeaveListData(
-      String status, String Secttion, bool? loadmore) async {
-    RejectedleaveListloading(true);
-    loadmore == true ? Rejectectedpage.value++ : Rejectectedpage.value = 1;
-    try {
-      var CatogoryList = await RejectedLeaveDataListGet(status, Secttion);
-      if (CatogoryList.data != null) {
-        loadmore == true
-            ? RejectedLeaveListData.addAll(CatogoryList.data!)
-            : {
-                RejectedLeaveListData.clear(),
-                RejectedLeaveListData.assignAll(CatogoryList.data!)
-              };
-        leaveListloading(false);
-      }
-      RejectedleaveListloading(false);
-    } catch (e) {
-      print("Error fetching draft jobs: $e");
-      RejectedleaveListloading(false);
-    } finally {
-      RejectedleaveListloading(false);
-      // isDraftJobListLoading.value = false;
-    }
+      String status, String section, bool? loadmore) async {
+    await _handlePagedList(
+      status: status,
+      section: section,
+      page: Rejectectedpage,
+      list: RejectedLeaveListData,
+      totalCount: rejectedTotalCount,
+      loading: RejectedleaveListloading,
+      isMoreLoading: rejectedIsMoreLoading,
+      hasMoreData: rejectedHasMoreData,
+      loadMore: loadmore == true,
+    );
   }
 
-  Future<LeaveListResponse> RejectedLeaveDataListGet(
-      String status, String Section) async {
-    prefs = await SharedPreferences.getInstance();
-    try {
-      var response = await BaseService().getData(
-        endPoint:
-            '${ApiRoutes().LeaveListData}?page=1&limit=10&status=$status&type=$Section',
-        isTokenRequired: true,
-      );
-      return LeaveListResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      if (e.response?.data["statusCode"] == 401) {
-        await TokenStorage.removeToken();
-        await TokenStorage.removeusername();
-        await TokenStorage.removeuserid();
-        Get.offAll(const LoginSignUp());
-      }
-      print(e.response);
-      print("API Error: ${e.message} - ${e.response?.data}");
-
-      return LeaveListResponse(
-        statusCode: 500,
-        message: e.message,
-        data: null,
-      );
-    }
-  }
-
-  //<================================== Get Approved LeaveList data ================================
-  RxList<LeaveListModel> ApprovedLeaveListData = RxList<LeaveListModel>();
+  //<================= Approved =================>
+  RxList<LeaveListModel> ApprovedLeaveListData = <LeaveListModel>[].obs;
   RxInt Approvedpagenation = 1.obs;
   RxBool ApprovedleaveListloading = false.obs;
+  RxBool approvedIsMoreLoading = false.obs;
+  RxBool approvedHasMoreData = true.obs;
+  RxInt approvedTotalCount = 0.obs;
 
   Future<void> GetApprovedLeaveListData(
-      String status, String Secttion, bool Loadmore) async {
-    ApprovedleaveListloading(true);
-    Loadmore == true
-        ? Approvedpagenation.value++
-        : Approvedpagenation.value = 1;
-    try {
-      var CatogoryList = await ApprovedLeaveDataListGet(status, Secttion);
-      if (CatogoryList.data != null) {
-        Loadmore == true
-            ? ApprovedLeaveListData.addAll(CatogoryList.data!)
-            : {
-                ApprovedLeaveListData.clear(),
-                ApprovedLeaveListData.assignAll(CatogoryList.data!)
-              };
-        leaveListloading(false);
-      }
-      ApprovedleaveListloading(false);
-    } catch (e) {
-      print("Error fetching draft jobs: $e");
-      ApprovedleaveListloading(false);
-    } finally {
-      ApprovedleaveListloading(false);
-      // isDraftJobListLoading.value = false;
-    }
+      String status, String section, bool loadMore) async {
+    await _handlePagedList(
+      status: status,
+      section: section,
+      page: Approvedpagenation,
+      list: ApprovedLeaveListData,
+      totalCount: approvedTotalCount,
+      loading: ApprovedleaveListloading,
+      isMoreLoading: approvedIsMoreLoading,
+      hasMoreData: approvedHasMoreData,
+      loadMore: loadMore,
+    );
   }
 
-  Future<LeaveListResponse> ApprovedLeaveDataListGet(
-      String status, String Section) async {
-    prefs = await SharedPreferences.getInstance();
-    try {
-      var response = await BaseService().getData(
-        endPoint:
-            '${ApiRoutes().LeaveListData}?page=1&limit=10&status=$status&type=$Section',
-        isTokenRequired: true,
-      );
-      return LeaveListResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      if (e.response?.data["statusCode"] == 401) {
-        await TokenStorage.removeToken();
-        await TokenStorage.removeusername();
-        await TokenStorage.removeuserid();
-        Get.offAll(const LoginSignUp());
-      }
-      print(e.response);
-      print("API Error: ${e.message} - ${e.response?.data}");
+  //<================= ALL (pending type=all) =================>
+  RxList<LeaveListModel> AllLeaveListData = <LeaveListModel>[].obs;
+  RxInt allPendingPage = 1.obs;
+  RxBool allLeaveLoading = false.obs;
+  RxBool allIsMoreLoading = false.obs;
+  RxBool allHasMoreData = true.obs;
+  RxInt allTotalCount = 0.obs;
 
-      return LeaveListResponse(
-        statusCode: 500,
-        message: e.message,
-        data: null,
-      );
-    }
+  Future<void> GetAllLeaveDataList(
+      String status, String section, bool? loadmore) async {
+    await _handlePagedList(
+      status: status,
+      section: section,
+      page: allPendingPage,
+      list: AllLeaveListData,
+      totalCount: allTotalCount,
+      loading: allLeaveLoading,
+      isMoreLoading: allIsMoreLoading,
+      hasMoreData: allHasMoreData,
+      loadMore: loadmore == true,
+    );
   }
 
-  //<================================== Get Single Leave Status ================================
+  //<================= ALL Approved (type=all & status=approved) =================>
+  // Keeping original variable name to avoid breaking other code
+  RxList<LeaveListModel> GetAllApprovedleaveListloading =
+      <LeaveListModel>[].obs; // this is a LIST
+  RxBool GetApprovedleaveListloading = false.obs; // this is a LOADING FLAG
+  RxInt allApprovedPage = 1.obs;
+  RxBool allApprovedIsMoreLoading = false.obs;
+  RxBool allApprovedHasMoreData = true.obs;
+  RxInt allApprovedTotalCount = 0.obs;
+
+  Future<void> GetAllApprovedLeaveDataList(
+      String status, String section, bool? loadmore) async {
+    await _handlePagedList(
+      status: status,
+      section: section,
+      page: allApprovedPage,
+      list: GetAllApprovedleaveListloading,
+      totalCount: allApprovedTotalCount,
+      loading: GetApprovedleaveListloading,
+      isMoreLoading: allApprovedIsMoreLoading,
+      hasMoreData: allApprovedHasMoreData,
+      loadMore: loadmore == true,
+    );
+  }
+
+  //<================= Generic pagination handler (shared by all tabs) =================>
+  Future<void> _handlePagedList({
+  required String status,
+  required String section,
+  required RxInt page,
+  required RxList<LeaveListModel> list,
+  required RxInt totalCount,
+  required RxBool loading,
+  required RxBool isMoreLoading,
+  required RxBool hasMoreData,
+  required bool loadMore,
+}) async {
+  // prevent overlapping calls
+  if (loading.value || isMoreLoading.value) return;
+
+  if (loadMore) {
+    if (!hasMoreData.value) return;
+    isMoreLoading(true);
+    page.value++;
+  } else {
+    loading(true);
+    page.value = 1;
+    hasMoreData(true);
+    totalCount.value = 0;
+    list.clear();
+  }
+
+  try {
+    final result = await _fetchLeavePage(status, section, page.value);
+
+    if (result.count != null && result.count! > 0) {
+      totalCount.value = result.count!;
+    }
+
+    if (result.items.isNotEmpty) {
+      list.addAll(result.items);
+
+      if ((totalCount.value > 0 && list.length >= totalCount.value) ||
+          result.items.length < _pageSize) {
+        hasMoreData(false);
+      }
+    } else {
+      hasMoreData(false);
+    }
+  } finally {
+    loading(false);
+    isMoreLoading(false);
+  }
+}
+
+  //<================= Single Leave Status =================>
   RxList<SingleLeaveStatusModel> SingleLeaveStatusData =
-      RxList<SingleLeaveStatusModel>();
-
+      <SingleLeaveStatusModel>[].obs;
   RxBool leaveStatusdataloading = false.obs;
 
   Future<void> GetLeaveStatusData(String id) async {
@@ -328,15 +455,11 @@ class LeaveController extends GetxController {
       var leaveStatus = await LeaveStatusDataGet(id);
       if (leaveStatus.data != null) {
         SingleLeaveStatusData.assignAll(leaveStatus.data!);
-        leaveStatusdataloading(false);
       }
-      leaveStatusdataloading(false);
     } catch (e) {
-      print("Error fetching draft jobs: $e");
-      leaveStatusdataloading(false);
+      // ignore
     } finally {
       leaveStatusdataloading(false);
-      // isDraftJobListLoading.value = false;
     }
   }
 
@@ -350,15 +473,7 @@ class LeaveController extends GetxController {
       );
       return SingleLeaveStatusResponse.fromJson(response.data);
     } on DioException catch (e) {
-      if (e.response?.data["statusCode"] == 401) {
-        await TokenStorage.removeToken();
-        await TokenStorage.removeusername();
-        await TokenStorage.removeuserid();
-        Get.offAll(const LoginSignUp());
-      }
-      print(e.response);
-      print("API Error: ${e.message} - ${e.response?.data}");
-
+      _handleUnauthorized(e);
       return SingleLeaveStatusResponse(
         statusCode: 500,
         message: e.message,
@@ -367,420 +482,22 @@ class LeaveController extends GetxController {
     }
   }
 
-  //<=============================== Create Late Coming Application =================================
-  final TextEditingController Noofhours = TextEditingController();
-  final TextEditingController TimeRange = TextEditingController();
-  DateTime? StartTime;
-  DateTime? EndTime;
-  final TextEditingController personname = TextEditingController();
-  final TextEditingController contactnumber = TextEditingController();
-  final TextEditingController DayoutCetegory = TextEditingController();
-  RxBool LateComingCreating = false.obs;
-
-  SubmitLateComingApplication() async {
-    print(
-        "hello data $StartTime , $EndTime, ${Noofhours.text}, ${selectedDay.isNotEmpty ? selectedDay.first : 'No Day Selected'}, ${discription.text}");
-
-    prefs = await SharedPreferences.getInstance();
-
-    // Validate Time Range
-    if (StartTime == null || EndTime == null) {
-      print("Please Select Time Range.");
-      Utils.showToast(
-        message: "Please select a valid time range.",
-        gravity: ToastGravity.BOTTOM,
-        textColor: Colors.white,
-        fontsize: 16,
-      );
-      return; // Stop if no time range is selected
-    }
-
-    // Validate Description
-    if (discription.text.isEmpty) {
-      Utils.showToast(
-        message: "Please provide a reason for leave.",
-        gravity: ToastGravity.BOTTOM,
-        textColor: Colors.white,
-        fontsize: 16,
-      );
-      return; // Stop if no description is provided
-    }
-    if (Noofhours.text.isEmpty) {
-      Utils.showToast(
-        message: "Time is Required.",
-        gravity: ToastGravity.BOTTOM,
-        textColor: Colors.white,
-        fontsize: 16,
-      );
-      return; // Stop if no description is provided
-    }
-
-    // Validate Selected Day
-    if (selectedDay.isEmpty) {
-      print("No Day Selected.");
-      Utils.showToast(
-        message: "Please select a day.",
-        gravity: ToastGravity.BOTTOM,
-        textColor: Colors.white,
-        fontsize: 16,
-      );
-      return; // Stop if no day is selected
-    }
-
-    try {
-      LateComingCreating(true); // Start loading state
-
-      // API call
-      var response = await BaseService().postData(
-        endPoint: ApiRoutes().CreateDayoutapllication,
-        isTokenRequired: true,
-        body: {
-          "leaveType": "late coming",
-          "startDate": "$StartTime",
-          "endDate": "$EndTime",
-          "hours": Noofhours.text,
-          "description": discription.text,
-        },
-      );
-
-      if (response.data['statusCode'] == 200) {
-        Utils.showToast(
-          message: response.data['message'],
-          gravity: ToastGravity.CENTER,
-          textColor: Colors.white,
-          fontsize: 16,
-        );
-        Clear(); // Clear input fields
-        GetLeaveDataList("pending", "late coming", false); // Refresh list
-        Get.back(); // Go back to the previous page
-      }
-    } on DioException catch (e) {
-      // Handle API errors
-      Utils.showToast(
-        message: "Error: ${e.message}",
-        gravity: ToastGravity.CENTER,
-        textColor: Colors.white,
-        fontsize: 16,
-      );
-
-      if (e.response?.data["statusCode"] == 401) {
-        // Handle unauthorized access
-        await TokenStorage.removeToken();
-        await TokenStorage.removeusername();
-        await TokenStorage.removeuserid();
-        Get.offAll(const LoginSignUp());
-      }
-
-      print("API Error: ${e.message} - ${e.response?.data}");
-    } finally {
-      // Always turn off loading state
-      LateComingCreating(false);
-    }
-  }
-
-  // SubmitLateComingApplication() async {
-  //   print(
-  //       "hello data $StartTime , $EndTime, ${Noofhours.text}, ${selectedDay.first}, ${discription.text}");
-  //   prefs = await SharedPreferences.getInstance();
-  //   if (StartTime == null && EndTime == null) {
-  //     print("Please Select Time Range.");
-  //     Utils.showToast(
-  //       message: "No days selected for leave application.",
-  //       gravity: ToastGravity.BOTTOM,
-  //       textColor: Colors.white,
-  //       fontsize: 16,
-  //     );
-  //     return; // Stop the function if no days are selected
-  //   }
-  //   if (discription.text.isEmpty) {
-  //     print("Please Select Time Range.");
-  //     Utils.showToast(
-  //       message: "Please Give Reason For Leave.",
-  //       gravity: ToastGravity.BOTTOM,
-  //       textColor: Colors.white,
-  //       fontsize: 16,
-  //     );
-  //     return; // Stop the function if no days are selected
-  //   }
-  //   try {
-  //     LateComingCreating(true);
-  //     var response = await BaseService().postData(
-  //       endPoint: ApiRoutes().CreateDayoutapllication,
-  //       isTokenRequired: true,
-  //       body: {
-  //         "leaveType": "late coming",
-  //         "startDate": "${StartTime}",
-  //         "endDate": "${EndTime}",
-  //         "hours": Noofhours.text,
-  //         "description": discription.text,
-  //       },
-  //     );
-
-  //     if (response.data['statusCode'] == 200) {
-  //       Utils.showToast(
-  //         message: response.data['message'],
-  //         gravity: ToastGravity.CENTER,
-  //         textColor: Colors.white,
-  //         fontsize: 16,
-  //       );
-  //       Clear();
-  //       GetLeaveDataList(
-  //           "pending", "late coming", false); // true is load more option
-  //       Get.back();
-
-  //       LateComingCreating(false);
-  //     }
-  //   } on DioError catch (e) {
-  //     Utils.showToast(
-  //       message: "${e.message} ",
-  //       gravity: ToastGravity.CENTER,
-  //       textColor: Colors.white,
-  //       fontsize: 16,
-  //     );
-  //     if (e.response?.data["statusCode"] == 401) {
-  //       await TokenStorage.removeToken();
-  //       await TokenStorage.removeusername();
-  //       await TokenStorage.removeuserid();
-  //       Get.offAll(LoginSignUp());
-  //     }
-  //     print(e.response);
-  //     print("API Error: ${e.message} - ${e.response?.data}");
-  //     LateComingCreating(false);
-  //     Utils.showToast(
-  //       message: "${e.message} ",
-  //       gravity: ToastGravity.CENTER,
-  //       textColor: Colors.white,
-  //       fontsize: 16,
-  //     );
-  //   }
-  // }
-
-  //<================================== Get all pending leave data ================================
-  RxList<LeaveListModel> AllLeaveListData = RxList<LeaveListModel>();
-
-Future<void> GetAllLeaveDataList(String status, String Section, bool? loadmore) async {
-  leaveListloading(true); // Indicating loading starts
-
-  // Update the page number based on loadmore condition
-  if (loadmore == true) {
-    pendingpage.value++;
-  } else {
-    pendingpage.value = 1;
-  }
-
-  try {
-    var CatogoryList = await AllLeaveDataListGet(status, Section, pendingpage.value);
-
-    // Check if data is available
-    if (CatogoryList.data != null) {
-      if (loadmore == true) {
-        AllLeaveListData.addAll(CatogoryList.data!); // Add more data
-      } else {
-        AllLeaveListData.clear(); // Clear old data if not loading more
-        AllLeaveListData.assignAll(CatogoryList.data!); // Add new data
-      }
-
-      // Ensure the update happens after the build phase
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        leaveListloading(false); // Always stop loading once done
-      });
-    } else {
-      // Optionally handle empty data here if needed
-      print("No data available");
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        leaveListloading(false); // Stop loading if no data is found
-      });
-    }
-  } catch (e) {
-    print("Error fetching leave data: $e");
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      leaveListloading(false); // Stop loading on error
-    });
-  }
-}
-
-  Future<LeaveListResponse> AllLeaveDataListGet(
-      String status, String Section, int pagenumber) async {
-    prefs = await SharedPreferences.getInstance();
-    try {
-      var response = await BaseService().getData(
-        endPoint:
-            '${ApiRoutes().LeaveListData}?page=$pagenumber&limit=10&status=$status&type=$Section',
-        isTokenRequired: true,
-      );
-      return LeaveListResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      if (e.response?.data["statusCode"] == 401) {
-        await TokenStorage.removeToken();
-        await TokenStorage.removeusername();
-        await TokenStorage.removeuserid();
-        Get.offAll(const LoginSignUp());
-      }
-      print(e.response);
-      print("API Error: ${e.message} - ${e.response?.data}");
-
-      return LeaveListResponse(
-        statusCode: 500,
-        message: e.message,
-        data: null,
-      );
-    }
-  }
-
-  //<================================== Get all Approved leave data ================================
-  RxList<LeaveListModel> GetAllApprovedleaveListloading =
-      RxList<LeaveListModel>();
-  RxBool GetApprovedleaveListloading = false.obs;
-  Future<void> GetAllApprovedLeaveDataList(
-      String status, String Secttion, bool? loadmore) async {
-    GetApprovedleaveListloading(true);
-    loadmore == true ? pendingpage.value++ : pendingpage.value = 1;
-    try {
-      var CatogoryList = await AllApprovedLeaveDataListGet(
-          status, Secttion, pendingpage.value);
-      if (CatogoryList.data != null) {
-        loadmore == true
-            ? GetAllApprovedleaveListloading.addAll(CatogoryList.data!)
-            : {
-                GetAllApprovedleaveListloading.clear(),
-                GetAllApprovedleaveListloading.assignAll(CatogoryList.data!)
-              };
-        GetApprovedleaveListloading(false);
-      }
-      GetApprovedleaveListloading(false);
-    } catch (e) {
-      print("Error fetching draft jobs: $e");
-      GetApprovedleaveListloading(false);
-    } finally {
-      GetApprovedleaveListloading(false);
-      // isDraftJobListLoading.value = false;
-    }
-  }
-
-  Future<LeaveListResponse> AllApprovedLeaveDataListGet(
-      String status, String Section, int pagenumber) async {
-    prefs = await SharedPreferences.getInstance();
-    try {
-      var response = await BaseService().getData(
-        endPoint:
-            '${ApiRoutes().LeaveListData}?page=$pagenumber&limit=10&status=$status&type=$Section',
-        isTokenRequired: true,
-      );
-      return LeaveListResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      if (e.response?.data["statusCode"] == 401) {
-        await TokenStorage.removeToken();
-        await TokenStorage.removeusername();
-        await TokenStorage.removeuserid();
-        Get.offAll(const LoginSignUp());
-      }
-      print(e.response);
-      print("API Error: ${e.message} - ${e.response?.data}");
-
-      return LeaveListResponse(
-        statusCode: 500,
-        message: e.message,
-        data: null,
-      );
-    }
-  }
-
-  //< ============================ Remove Leave Application ================================
-  RxBool RemoveLeaveLoading = false.obs;
-
-  RemoveLeave(String id) async {
-    RemoveLeaveLoading(true);
-    prefs = await SharedPreferences.getInstance();
-
-    try {
-      var response = await BaseService().postData(
-        endPoint: ApiRoutes().leaveanddayoutRemove, // change this
-        isTokenRequired: true,
-        body: {"leaveId": id},
-      );
-      Utils.showToast(
-        message: "${response.data["message"]}",
-        gravity: ToastGravity.BOTTOM,
-        textColor: Colors.white,
-        fontsize: 16,
-      );
-      getpasstabController.index == 0
-          ? GetLeaveDataList(
-              'pending', 'leave', false) // true is load more option
-          : GetLeaveDataList(
-              "pending", "late coming", false); // true is load more option
-
-      RemoveLeaveLoading(false);
-      Get.back();
-    } on DioException catch (e) {
-      if (e.response?.data["statusCode"] == 401) {
-        await TokenStorage.removeToken();
-        await TokenStorage.removeusername();
-        await TokenStorage.removeuserid();
-        Get.offAll(const LoginSignUp());
-      }
-      print(e.response);
-      print("API Error: ${e.message} - ${e.response?.data}");
-      RemoveLeaveLoading(false);
-    }
-  }
-
-  AllRemoveLeave(String id) async {
-    RemoveLeaveLoading(true);
-    prefs = await SharedPreferences.getInstance();
-
-    try {
-      var response = await BaseService().postData(
-        endPoint: ApiRoutes().leaveanddayoutRemove, // change this
-        isTokenRequired: true,
-        body: {"leaveId": id},
-      );
-      Utils.showToast(
-        message: "${response.data["message"]}",
-        gravity: ToastGravity.BOTTOM,
-        textColor: Colors.white,
-        fontsize: 16,
-      );
-      GetAllLeaveDataList("pending", "all", false); // true is load more option
-
-      RemoveLeaveLoading(false);
-      Get.back();
-    } on DioException catch (e) {
-      if (e.response?.data["statusCode"] == 401) {
-        await TokenStorage.removeToken();
-        await TokenStorage.removeusername();
-        await TokenStorage.removeuserid();
-        Get.offAll(const LoginSignUp());
-      }
-      print(e.response);
-      print("API Error: ${e.message} - ${e.response?.data}");
-      RemoveLeaveLoading(false);
-    }
-  }
-
-  //<================================== Get  Day outList data ================================
-  // RxList<GetOutApproveModel> DayOutapprovedData = RxList<GetOutApproveModel>();
+  //<================= Day-out / Ticket details =================>
   Rx<GetOutApproveModel> leaveapprovedData =
       Rx<GetOutApproveModel>(GetOutApproveModel());
-
   RxBool DayOutApprovedloading = false.obs;
 
-  Future<void> GetLeaveDataDetails(
-    String dayoutid,
-  ) async {
+  Future<void> GetLeaveDataDetails(String dayoutid) async {
     DayOutApprovedloading(true);
     try {
       var Getoutapproveddata = await GetOutApprovedataGet(dayoutid);
       if (Getoutapproveddata.data != null) {
         leaveapprovedData.value = Getoutapproveddata.data!;
-        DayOutApprovedloading(false);
       }
-      DayOutApprovedloading(false);
     } catch (e) {
-      DayOutApprovedloading(false);
+      // ignore
     } finally {
       DayOutApprovedloading(false);
-      // isDraftJobListLoading.value = false;
     }
   }
 
@@ -794,8 +511,6 @@ Future<void> GetAllLeaveDataList(String status, String Section, bool? loadmore) 
       );
       return GetOutTicketResponse.fromJson(response.data);
     } on DioException catch (e) {
-      print("API Error: ${e.message} - ${e.response?.data}");
-
       return GetOutTicketResponse(
         statusCode: 500,
         message: e.message,
@@ -804,18 +519,93 @@ Future<void> GetAllLeaveDataList(String status, String Section, bool? loadmore) 
     }
   }
 
-  Clear() {
+  //<================= Remove Leave =================>
+  RxBool RemoveLeaveLoading = false.obs;
+
+  Future<void> RemoveLeave(String id) async {
+    RemoveLeaveLoading(true);
+    prefs = await SharedPreferences.getInstance();
+
+    try {
+      var response = await BaseService().postData(
+        endPoint: ApiRoutes().leaveanddayoutRemove,
+        isTokenRequired: true,
+        body: {"leaveId": id},
+      );
+      Utils.showToast(
+        message: "${response.data["message"]}",
+        gravity: ToastGravity.BOTTOM,
+        textColor: Colors.white,
+        fontsize: 16,
+      );
+
+      if (getpasstabController.index == 0) {
+        getLeaveDataList('pending', 'leave', loadMore: false);
+      } else {
+        getLeaveDataList('pending', 'late coming', loadMore: false);
+      }
+
+      Get.back();
+    } on DioException catch (e) {
+      _handleUnauthorized(e);
+    } finally {
+      RemoveLeaveLoading(false);
+    }
+  }
+
+  Future<void> AllRemoveLeave(String id) async {
+    RemoveLeaveLoading(true);
+    prefs = await SharedPreferences.getInstance();
+
+    try {
+      var response = await BaseService().postData(
+        endPoint: ApiRoutes().leaveanddayoutRemove,
+        isTokenRequired: true,
+        body: {"leaveId": id},
+      );
+      Utils.showToast(
+        message: "${response.data["message"]}",
+        gravity: ToastGravity.BOTTOM,
+        textColor: Colors.white,
+        fontsize: 16,
+      );
+
+      GetAllLeaveDataList('pending', 'all', false);
+      Get.back();
+    } on DioException catch (e) {
+      _handleUnauthorized(e);
+    } finally {
+      RemoveLeaveLoading(false);
+    }
+  }
+
+  //<================= Utils =================>
+  void _handleUnauthorized(DioException e) async {
+    if (e.response?.data is Map && e.response?.data["statusCode"] == 401) {
+      await TokenStorage.removeToken();
+      await TokenStorage.removeusername();
+      await TokenStorage.removeuserid();
+      Get.offAll(const LoginSignUp());
+    }
+    debugPrint("API Error: ${e.message} - ${e.response?.data}");
+  }
+
+  void Clear() {
     selectedDay.clear();
-    Noofhours.clear();
-    selectDaterang.clear();
+    
+    
     discription.clear();
     selectedPurpose.clear();
     TimeRange.clear();
+    firstdateDate.clear();
+    lastdateDate.clear();
+    totaldate.clear();
+    StartTime = null;
+    EndTime = null;
   }
 
-  //<================================= Leave page Functions ========================>
-
-  final List<String> purposes = [
+  //<================= Leave page text helpers =================>
+  final List<String> purposes = const [
     "Visiting Parents",
     "Medical Leave",
     "Emergency",
@@ -829,67 +619,89 @@ Future<void> GetAllLeaveDataList(String status, String Section, bool? loadmore) 
   String formatTimeRange(
       BuildContext context, TimeOfDay? startTime, TimeOfDay? endTime) {
     if (startTime == null || endTime == null) return '';
-
     final duration = calculateDuration(startTime, endTime);
-
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
-
     Noofhours.text = '$hours : ${minutes <= 9 ? "0$minutes" : minutes} ';
     final localizations = MaterialLocalizations.of(context);
-
     final startFormatted =
         localizations.formatTimeOfDay(startTime, alwaysUse24HourFormat: false);
     final endFormatted =
         localizations.formatTimeOfDay(endTime, alwaysUse24HourFormat: false);
-
-    return '$startFormatted - $endFormatted';
+    final range = '$startFormatted - $endFormatted';
+    TimeRange.text = range;
+    return range;
   }
 
   String formatTime(BuildContext context, TimeOfDay? startTime) {
     if (startTime == null) return '';
-
     final localizations = MaterialLocalizations.of(context);
-
     final startFormatted =
         localizations.formatTimeOfDay(startTime, alwaysUse24HourFormat: false);
-
     return startFormatted;
   }
 
   Duration calculateDuration(TimeOfDay startTime, TimeOfDay endTime) {
     final startMinutes = startTime.hour * 60 + startTime.minute;
     final endMinutes = endTime.hour * 60 + endTime.minute;
-
-    // If end time is before start time, assume it's on the next day
-    final difference = (endMinutes - startMinutes + 1440) % 1440;
-
+    final difference = (endMinutes - startMinutes + 1440) % 1440; // overnight ok
     return Duration(minutes: difference);
   }
 
+  // === DATE HELPERS (normalized, consistent) ===
+
+  /// Returns a date with time set to 00:00:00 (local).
+  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// Clean, sort, and normalize the currently selected days.
+  List<DateTime> _normalizedSelectedDays() {
+    final cleaned = selectedDay.whereType<DateTime>().toList();
+    cleaned.sort();
+    return cleaned.map(_dateOnly).toList();
+  }
+
+  /// Formats and also updates the text controllers consistently.
+  /// Counts days as: max(1, end - start in days) so 15→18 = 3, 15→15 = 1.
   String formatDateRange(DateTime startDate, DateTime endDate) {
-    if (startDate.isAfter(endDate)) return '';
+    final s = _dateOnly(startDate);
+    final e = _dateOnly(endDate);
+    if (s.isAfter(e)) return '';
 
-    final noOfDays = calculateDaysDifference(startDate, endDate);
-
+    final noOfDays = calculateDaysDifference(s, e);
     totaldate.text = "$noOfDays";
 
-    final formattedStartDate = DateFormat('MMM dd,yyyy').format(startDate);
-    final formattedEndDate = DateFormat('MMM dd,yyyy').format(endDate);
+    final formattedStartDate = DateFormat('MMM dd,yyyy').format(s);
+    final formattedEndDate = DateFormat('MMM dd,yyyy').format(e);
 
-    // Example: 'Aug 01, 2024 - Aug 24, 2024'
-    if (startDate == endDate) {
-      firstdateDate.text = '$formattedStartDate ';
-      lastdateDate.text = '$formattedStartDate ';
-      return '$formattedStartDate ';
+    if (s.isAtSameMomentAs(e)) {
+      firstdateDate.text = formattedStartDate;
+      lastdateDate.text = formattedStartDate;
+      selectDaterang.text = formattedStartDate;
+      return formattedStartDate;
     } else {
-      firstdateDate.text = '$formattedStartDate ';
-      lastdateDate.text = '$formattedEndDate ';
-      return '$formattedStartDate-$formattedEndDate ';
+      firstdateDate.text = formattedStartDate;
+      lastdateDate.text = formattedEndDate;
+      final range = '$formattedStartDate - $formattedEndDate';
+      selectDaterang.text = range;
+      return range;
     }
   }
 
+  /// Day count policy:
+  /// - Normalize both to 00:00:00.
+  /// - Count = max(1, (end - start).inDays).
+  ///   - 15 → 18 => 3
+  ///   - 15 → 15 => 1
   int calculateDaysDifference(DateTime startDate, DateTime endDate) {
-    return endDate.difference(startDate).inDays + 1;
+    final s = _dateOnly(startDate);
+    final e = _dateOnly(endDate);
+    final diff = e.difference(s).inDays;
+    return diff <= 0 ? 1 : diff;
   }
+}
+
+class _PagedLeave {
+  final List<LeaveListModel> items;
+  final int? count;
+  _PagedLeave(this.items, this.count);
 }

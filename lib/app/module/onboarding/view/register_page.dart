@@ -159,15 +159,13 @@ class _RegisterState extends State<Register> {
                               firstDate: DateTime(1900),
                               lastDate: DateTime.now(),
                             );
-                            if (selectedDate != null) {
-                              setState(() {
-                                authController.Dob = selectedDate;
-                                authController.DOB.text =
-                                    DateFormat('dd-MM-yyyy')
-                                        .format(selectedDate);
-                              });
-                            }
-                          },
+                            setState(() {
+                              authController.Dob = selectedDate;
+                              authController.DOB.text =
+                                  DateFormat('dd-MM-yyyy')
+                                      .format(selectedDate!);
+                            });
+                                                    },
                           hintText: 'Date of Birth*',
                           controller: authController.DOB,
                           onDateSelected: (DateTime date) {

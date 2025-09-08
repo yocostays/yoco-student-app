@@ -20,16 +20,18 @@ class _LeaveApprovedPageState extends State<LeaveApprovedPage>
     with SingleTickerProviderStateMixin {
   final LeaveController _leavecontroller = Get.put(LeaveController());
   final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
-  // final List<int> _items = List<int>.generate(6, (int index) => index);
   late ScrollController _scrollController;
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _fadeAnimation;
   bool isLoadingMore = false;
+
+  int selectedindex = 0;
+
   @override
   void initState() {
     super.initState();
-    // _leavecontroller.GetLeaveDataList("approved", "leave");
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -54,12 +56,11 @@ class _LeaveApprovedPageState extends State<LeaveApprovedPage>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _leavecontroller.getpasstabController.index == 0
-          ? _leavecontroller.GetApprovedLeaveListData(
-              "approved", "leave", false) // true/false is dor loadmore data
-          : _leavecontroller.GetApprovedLeaveListData("approved", "late coming",
-              false); // true/false is dor loadmore data
+          ? _leavecontroller.GetApprovedLeaveListData("approved", "leave", false)
+          : _leavecontroller.GetApprovedLeaveListData("approved", "late coming", false);
+
       Future.delayed(const Duration(milliseconds: 100), () {
-        _controller.forward(); // Trigger the animation after a slight delay
+        _controller.forward();
       });
     });
   }
@@ -85,14 +86,10 @@ class _LeaveApprovedPageState extends State<LeaveApprovedPage>
       setState(() {
         isLoadingMore = true;
       });
-      print("loade more");
 
-      // Fetch more data
       _leavecontroller.getpasstabController.index == 0
-          ? _leavecontroller.GetApprovedLeaveListData(
-              "approved", "leave", true) // true/false is dor loadmore data
-          : _leavecontroller.GetApprovedLeaveListData("approved", "late coming",
-              true); // true/false is dor loadmore data
+          ? _leavecontroller.GetApprovedLeaveListData("approved", "leave", true)
+          : _leavecontroller.GetApprovedLeaveListData("approved", "late coming", true);
 
       setState(() {
         isLoadingMore = false;
@@ -104,7 +101,7 @@ class _LeaveApprovedPageState extends State<LeaveApprovedPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Obx(() {
-        // Avoid unnecessary controller state updates within the build phase
+        /// 1. LOADING STATE
         if (_leavecontroller.ApprovedleaveListloading.value) {
           return AnimatedList(
             key: _listKey,
@@ -113,7 +110,10 @@ class _LeaveApprovedPageState extends State<LeaveApprovedPage>
               return _loderItem(context, index, animation);
             },
           );
-        } else if (_leavecontroller.ApprovedLeaveListData.isEmpty) {
+        }
+
+        /// 2. EMPTY STATE
+        if (_leavecontroller.ApprovedLeaveListData.isEmpty) {
           return _leavecontroller.getpasstabController.index == 1
               ? Center(
                   child: Text(
@@ -135,126 +135,82 @@ class _LeaveApprovedPageState extends State<LeaveApprovedPage>
                         ),
                   ),
                 );
-        } else {
-          // Ensure any AnimatedList actions happen after the widget is built
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            // If needed, you can perform additional checks or updates here
-          });
-
-          return _leavecontroller.getpasstabController.index == 1
-              ? AnimatedList(
-                  key: _listKey,
-                  initialItemCount: _leavecontroller.ApprovedLeaveListData
-                      .length, // Ensure this matches the list size
-                  itemBuilder: (context, index, animation) {
-                    if (index < _leavecontroller.ApprovedLeaveListData.length) {
-                      return _buildItem(context, index, animation);
-                    } else {
-                      return const SizedBox
-                          .shrink(); // Return an empty widget for invalid indices
-                    }
-                  },
-                )
-              : AnimatedList(
-                  key: _listKey,
-                  initialItemCount: _leavecontroller.ApprovedLeaveListData
-                      .length, // Ensure this matches the list size
-                  itemBuilder: (context, index, animation) {
-                    print(
-                        "hhehbe : ${_leavecontroller.ApprovedLeaveListData.length} and : $index");
-                    if (index < _leavecontroller.ApprovedLeaveListData.length) {
-                      return _buildItem(context, index, animation);
-                    } else {
-                      return const SizedBox
-                          .shrink(); // Return an empty widget for invalid indices
-                    }
-                  },
-                );
         }
+
+        /// 3. DATA LIST
+        return AnimatedList(
+          key: _listKey,
+          initialItemCount: _leavecontroller.ApprovedLeaveListData.length,
+          itemBuilder: (context, index, animation) {
+            if (index < _leavecontroller.ApprovedLeaveListData.length) {
+              return _buildItem(context, index, animation);
+            } else {
+              return const SizedBox.shrink();
+            }
+          },
+        );
       }),
     );
   }
 
-  int selectedindex = 0;
   Widget _buildItem(
       BuildContext context, int index, Animation<double> animation) {
     if (index >= _leavecontroller.ApprovedLeaveListData.length) {
-      return const SizedBox.shrink(); // Prevent access if index is out of range
+      return const SizedBox.shrink();
     }
+
+    final item = _leavecontroller.ApprovedLeaveListData[index];
+
+    final startDate =
+        item.startDate != null ? DateTime.parse(item.startDate!).toLocal() : null;
+    final endDate =
+        item.endDate != null ? DateTime.parse(item.endDate!).toLocal() : null;
+
     return SlideTransition(
       position: _offsetAnimation,
       child: FadeTransition(
         opacity: _fadeAnimation,
-        child: Obx(
-          () => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 7),
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 16.h,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 7),
+          child: Column(
+            children: [
+              SizedBox(height: 16.h),
+              InkWell(
+                onTap: () {
+                  _leavecontroller.GetLeaveDataDetails(item.sId ?? "");
+                  setState(() {
+                    selectedindex == index + 1
+                        ? selectedindex = 0
+                        : selectedindex = index + 1;
+                  });
+                },
+                child: TicketCard(
+                  iconPath: widget.leave
+                      ? "assets/images/drawer/leave.png"
+                      : "assets/icons/late_entry.png",
+                  title: item.category ?? item.description ?? "".toUpperCase(),
+                  ticketId: item.ticketId ?? "",
+                  date: item.days == 1
+                      ? Utils.formatDatebynd(startDate!)
+                      : '${Utils.formatDatebynd(startDate!)} to ${Utils.formatDatebynd(endDate!)}',
+                  dateFontSize: 12,
+                  time: item.leaveType == "late coming"
+                      ? '${item.hours} Hours'
+                      : item.days == 1
+                          ? '${item.days} Day'
+                          : '${item.days} Days',
+                  timeFontSize: 12,
                 ),
-                InkWell(
-                  onTap: () {
-                    _leavecontroller.GetLeaveDataDetails(
-                        _leavecontroller.ApprovedLeaveListData[index].sId ??
-                            "");
-                    setState(() {
-                      selectedindex == index + 1
-                          ? selectedindex = 0
-                          : selectedindex = index + 1;
-                    });
-                  },
-                  child: TicketCard(
-                    iconPath: widget.leave == true
-                        ? "assets/images/drawer/leave.png"
-                        : "assets/icons/late_entry.png",
-                    title: _leavecontroller
-                            .ApprovedLeaveListData[index].category ??
-                        _leavecontroller
-                            .ApprovedLeaveListData[index].description ??
-                        "".toUpperCase(),
-                    ticketId: _leavecontroller
-                            .ApprovedLeaveListData[index].ticketId ??
-                        "",
-                    date: (_leavecontroller.ApprovedLeaveListData.isNotEmpty &&
-                            index <
-                                _leavecontroller.ApprovedLeaveListData.length)
-                        ? (_leavecontroller.ApprovedLeaveListData[index].days ==
-                                1
-                            ? Utils.formatDatebynd(DateTime.parse(
-                                _leavecontroller.ApprovedLeaveListData[index]
-                                        .startDate ??
-                                    ""))
-                            : '${Utils.formatDatebynd(DateTime.parse(_leavecontroller.ApprovedLeaveListData[index].startDate ?? ""))} to ${Utils.formatDatebynd(DateTime.parse(_leavecontroller.ApprovedLeaveListData[index].endDate ?? ""))}')
-                        : '',
-
-                    //  _leavecontroller.ApprovedLeaveListData[index].days == 1
-                    //     ? '${Utils.formatDatebynd(DateTime.parse(_leavecontroller.ApprovedLeaveListData[index].startDate ?? ""))}'
-                    //     : '${Utils.formatDatebynd(DateTime.parse(_leavecontroller.ApprovedLeaveListData[index].startDate ?? ""))} to ${Utils.formatDatebynd(DateTime.parse(_leavecontroller.LeaveListData[index].endDate ?? ""))} ',
-                    dateFontSize: 12,
-                    time: _leavecontroller
-                                .ApprovedLeaveListData[index].leaveType ==
-                            "late coming"
-                        ? '${_leavecontroller.ApprovedLeaveListData[index].hours} Hours'
-                        : _leavecontroller.ApprovedLeaveListData[index].days ==
-                                1
-                            ? '${_leavecontroller.ApprovedLeaveListData[index].days} Day'
-                            : '${_leavecontroller.ApprovedLeaveListData[index].days} Days',
-                    timeFontSize: 12,
-                  ),
-                ),
-                if (selectedindex == index + 1)
-                  SizedBox(
-                    height: 5.h,
-                  ),
-                if (selectedindex == index + 1)
-                  PassQrCode(
-                    loading: _leavecontroller.DayOutApprovedloading.value,
-                    gatepassnumber:
-                        _leavecontroller.leaveapprovedData.value.gatepassNumber,
-                  )
-              ],
-            ),
+              ),
+              if (selectedindex == index + 1) SizedBox(height: 5.h),
+              if (selectedindex == index + 1)
+                /// 👇 Wrap only the QR Code in Obx since it uses reactive vars
+                Obx(() => PassQrCode(
+                      loading: _leavecontroller.DayOutApprovedloading.value,
+                      gatepassnumber:
+                          _leavecontroller.leaveapprovedData.value.gatepassNumber,
+                    ))
+            ],
           ),
         ),
       ),
@@ -273,9 +229,7 @@ class _LeaveApprovedPageState extends State<LeaveApprovedPage>
             children: [
               Column(
                 children: [
-                  SizedBox(
-                    height: 16.h,
-                  ),
+                  SizedBox(height: 16.h),
                   CustomShimmer(
                     height: MediaQuery.of(context).size.height * 0.14,
                   )

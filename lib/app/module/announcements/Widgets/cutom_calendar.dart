@@ -109,9 +109,9 @@ class _CustomCalendarState extends State<CustomCalendar> {
                     firstDate: DateTime(1900),
                     lastDate: DateTime(2101),
                   );
-                  if (picked != null && picked != _focusedDay) {
+                  if (picked != _focusedDay) {
                     setState(() {
-                      _focusedDay = picked;
+                      _focusedDay = picked!;
                     });
                   }
                 },

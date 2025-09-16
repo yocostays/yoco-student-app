@@ -8,8 +8,8 @@ import 'package:yoco_stay_student/app/module/complaint_managment/controller/cont
 import 'package:yoco_stay_student/app/module/complaint_managment/model/complain_model.dart';
 import 'package:yoco_stay_student/app/module/home/view/Notification_view.dart';
 import 'package:yoco_stay_student/app/routes/routes.dart';
-import 'package:yoco_stay_student/app/widgets/bottom_navigation.dart';
-import 'package:yoco_stay_student/app/widgets/bottom_navigation_center_botton.dart';
+
+
 import 'package:yoco_stay_student/app/widgets/custum_app_bar.dart';
 import 'package:yoco_stay_student/app/widgets/stackbodysection.dart';
 
@@ -221,10 +221,10 @@ class _ComplaintSelectPageState extends State<ComplaintSelectPage>
           // ),
         ],
       ),
-      floatingActionButtonLocation:
-          FloatingActionButtonLocation.miniCenterDocked,
-      floatingActionButton: const CenterButton(),
-      bottomNavigationBar: const BottomNavigation(),
+      // floatingActionButtonLocation:
+      //     FloatingActionButtonLocation.miniCenterDocked,
+      // floatingActionButton: const CenterButton(),
+      // bottomNavigationBar: const BottomNavigation(),
     );
   }
 }

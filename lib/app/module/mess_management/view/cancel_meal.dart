@@ -185,7 +185,7 @@ class _CancelMealManagmentState extends State<CancelMealManagment> {
       // bottomNavigationBar: BottomNavigation(),
       body: Stack(
         children: [
-          CutomAppBarContainer(title: "MESS MANAGEMENT", contentWidgets: [
+          CustomAppBarContainer(title: "MESS MANAGEMENT", contentWidgets: [
             Container(
               height: 550.h,
               decoration: BoxDecoration(

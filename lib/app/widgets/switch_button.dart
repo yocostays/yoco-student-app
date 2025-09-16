@@ -1,44 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:yoco_stay_student/app/core/values/colors.dart';
 
-class SwitchExample extends StatefulWidget {
+/// Controller to manage switch state
+class SwitchController extends GetxController {
+  var isOn = true.obs;
+
+  void toggle(bool value) => isOn.value = value;
+}
+
+/// Reusable Switch Widget
+class SwitchExample extends StatelessWidget {
   const SwitchExample({super.key});
 
   @override
-  State<SwitchExample> createState() => _SwitchExampleState();
-}
-
-class _SwitchExampleState extends State<SwitchExample> {
-  bool light = true;
-
-  @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        Switch.adaptive(
-          activeColor: AppColor.white,
-          activeTrackColor: AppColor.primary,
+    final controller = Get.put(SwitchController());
+
+    return Center(
+      child: Obx(
+        () => Switch.adaptive(
+          value: controller.isOn.value,
+          activeColor: AppColor.primary,       // thumb color
+          activeTrackColor: AppColor.white,    // track when ON
           inactiveThumbColor: AppColor.primary,
           inactiveTrackColor: AppColor.white,
-          value: light,
-          onChanged: (bool value) {
-            setState(() {
-              light = value;
-            });
-          },
+          onChanged: controller.toggle,
         ),
-        // Switch.adaptive(
-        //   // Don't use the ambient CupertinoThemeData to style this switch.
-        //   applyCupertinoTheme: false,
-        //   value: light,
-        //   onChanged: (bool value) {
-        //     setState(() {
-        //       light = value;
-        //     });
-        //   },
-        // ),
-      ],
+      ),
     );
   }
 }

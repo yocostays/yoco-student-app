@@ -87,6 +87,7 @@ dependencies:
 
 
   http: any
+  lottie: ^3.3.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

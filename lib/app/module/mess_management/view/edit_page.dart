@@ -100,11 +100,12 @@ class _EditMealScreenState extends State<EditMealScreen> {
               ),
             ),
           )),
-      body: CutomAppBarContainer(
+      body: CustomAppBarContainer(
           title: messController.BookEditPage.value
               ? "EDIT BOOK MEALS"
               : "EDIT CANCEL MEALS",
-          messmanagment: false,
+          
+          isMessManagement: false,
           isScroll: false,
           contentWidgets: [
             _buildCalendarWithActionButtons(),

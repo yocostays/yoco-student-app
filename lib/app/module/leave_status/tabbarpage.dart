@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
+
 import 'package:yoco_stay_student/app/core/values/colors.dart';
-import 'package:yoco_stay_student/app/module/leave_status/repository.dart';
+
 import 'package:yoco_stay_student/app/module/leave_status/views/Approved_page.dart';
 import 'package:yoco_stay_student/app/module/leave_status/views/Rejected_page.dart';
 import 'package:yoco_stay_student/app/module/leave_status/views/pending_page.dart';
@@ -17,7 +17,7 @@ class LeaveStatusPage extends StatefulWidget {
 
 class _LeaveStatusStatePage extends State<LeaveStatusPage>
     with SingleTickerProviderStateMixin {
-  final LeaveController _leavecontroller = Get.put(LeaveController());
+
   late TabController _tabController;
   @override
   void initState() {

@@ -37,9 +37,9 @@ class _CommunityScreenState extends State<CommunityScreen>
       bottomNavigationBar: const BottomNavigation(),
       body: Stack(
         children: [
-          CutomAppBarContainer(
+          CustomAppBarContainer(
               title: "COMMUNITY",
-              messmanagment: false,
+              isMessManagement: false,
               isScroll: false,
               height: 80.h,
               contentWidgets: [

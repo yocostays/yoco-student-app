@@ -26,36 +26,36 @@ class _LeavePendingPageState extends State<LeavePendingPage>
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _fadeAnimation;
 
- @override
-void initState() {
-  super.initState();
+  @override
+  void initState() {
+    super.initState();
 
-  _controller = AnimationController(
-    duration: const Duration(milliseconds: 500),
-    vsync: this,
-  );
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
 
-  _scrollController = ScrollController()..addListener(_scrollListener);
+    _scrollController = ScrollController()..addListener(_scrollListener);
 
-  _offsetAnimation = Tween<Offset>(
-    begin: const Offset(0.0, 0.5),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _offsetAnimation = Tween<Offset>(
+      begin: const Offset(0.0, 0.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
-  _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
-      .animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
-  // ✅ Run after build
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (_leavecontroller.getpasstabController.index == 0) {
-      _leavecontroller.getLeaveDataList("pending", "leave", loadMore: false);
-    } else {
-      _leavecontroller.getLeaveDataList("pending", "late coming", loadMore: false);
-    }
+    // ✅ Run after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_leavecontroller.getpasstabController.index == 0) {
+        _leavecontroller.getLeaveDataList("pending", "leave", loadMore: false);
+      } else {
+        _leavecontroller.getLeaveDataList("pending", "late coming", loadMore: false);
+      }
 
-    _controller.forward();
-  });
-}
+      _controller.forward();
+    });
+  }
 
   @override
   void dispose() {
@@ -135,8 +135,8 @@ void initState() {
                 );
               }
               if (!_leavecontroller.hasMoreData.value) {
-                return Padding(
-                  padding: const EdgeInsets.all(16.0),
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
                   child: Center(
                     child: Text(
                       "No more data",
@@ -190,24 +190,42 @@ void initState() {
                       item.description ??
                       "".toUpperCase(),
                   ticketId: item.ticketId,
-                  date: item.days == 1
-                      ? Utils.formatDatebynd(startDate!)
-                      : '${Utils.formatDatebynd(startDate!)} to ${Utils.formatDatebynd(endDate!)}',
+                  // ✅ Always show range if start != end
+                  date: (startDate != null && endDate != null)
+                      ? (startDate.isAtSameMomentAs(endDate)
+                          ? Utils.formatDatebynd(startDate)
+                          : '${Utils.formatDatebynd(startDate)} to ${Utils.formatDatebynd(endDate)}')
+                      : '',
                   dateFontSize: 12,
                   time: item.leaveType == "late coming"
                       ? '${item.hours} Hours'
-                      : item.days == 1
-                          ? '${item.days} Day'
-                          : '${item.days} Days',
+                      : '${item.days} Day${item.days! > 1 ? 's' : ''}',
                   timeFontSize: 12,
                 ),
               ),
               Positioned(
                 right: 10,
-                top: 25,
+                top: 10,
                 child: InkWell(
                   onTap: () => _showLogoutDialog(context, item.sId ?? ""),
-                  child: Icon(Icons.close, size: 25, color: AppColor.primary),
+                  child: const Icon(Icons.close, size: 25, color: AppColor.primary),
+                ),
+              ),
+
+               Positioned(
+                right: 10,
+                bottom: 10,
+                child: InkWell(
+                  onTap: () =>  _leavecontroller.getpasstabController.index == 0
+                ? Get.to(() => const LeaveFromPage(leave: true))
+                : Get.to(() => const LeaveFromPage(leave: false)),
+                  child: Container(
+                    height: 20.w,
+                    width: 20.w,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(shape: BoxShape.rectangle,color: AppColor.primary,borderRadius: BorderRadius.circular(5)),
+                   
+                     child:  const Icon(Icons.edit, size: 15, color: AppColor.white)),
                 ),
               ),
             ],

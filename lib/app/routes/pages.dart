@@ -186,7 +186,7 @@ class AppPages {
     GetPage(
       title: "Leave-page",
       name: AppRoute.leavepage,
-      page: () =>  LeaveStatus(
+      page: () =>  const LeaveStatus(
         leave: true,
       ),
       binding: LeaveBinding(),
@@ -194,7 +194,7 @@ class AppPages {
     GetPage(
       title: "late-page",
       name: AppRoute.latepage,
-      page: () =>  LeaveStatus(
+      page: () =>  const LeaveStatus(
         leave: false,
       ),
       binding: LeaveBinding(),

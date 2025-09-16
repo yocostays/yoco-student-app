@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:yoco_stay_student/app/core/values/colors.dart';
 import 'package:yoco_stay_student/app/module/leave_status/repository.dart';
+import 'package:yoco_stay_student/app/module/leave_status/views/leave_from.dart';
 import 'package:yoco_stay_student/app/utils/utils.dart';
 import 'package:yoco_stay_student/app/widgets/custom_ticket_widget.dart';
 import 'package:yoco_stay_student/app/widgets/shimmerWidget/custom_shimmer.dart';
@@ -171,8 +172,8 @@ class _LeaveApprovedPageState extends State<LeaveApprovedPage>
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 7),
-          child: Column(
+          padding: const EdgeInsets.symmetric(horizontal: 7,vertical: 8),
+          child: Stack(
             children: [
               SizedBox(height: 16.h),
               InkWell(
@@ -202,6 +203,23 @@ class _LeaveApprovedPageState extends State<LeaveApprovedPage>
                   timeFontSize: 12,
                 ),
               ),
+              Positioned(
+                right: 10,
+                bottom: 10,
+                child: InkWell(
+                  onTap: () =>  _leavecontroller.getpasstabController.index == 0
+                ? Get.to(() => const LeaveFromPage(leave: true))
+                : Get.to(() => const LeaveFromPage(leave: false)),
+                  child: Container(
+                    height: 20.w,
+                    width: 20.w,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(shape: BoxShape.rectangle,color: AppColor.primary,borderRadius: BorderRadius.circular(5)),
+                   
+                     child:  const Icon(Icons.edit, size: 15, color: AppColor.white)),
+                ),
+              ),
+           
               if (selectedindex == index + 1) SizedBox(height: 5.h),
               if (selectedindex == index + 1)
                 /// 👇 Wrap only the QR Code in Obx since it uses reactive vars

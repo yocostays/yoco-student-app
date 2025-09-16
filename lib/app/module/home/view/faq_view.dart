@@ -15,9 +15,9 @@ class FaqView extends StatefulWidget {
 class _FaqViewState extends State<FaqView> {
   @override
   Widget build(BuildContext context) {
-    return CutomAppBarContainer(
+    return CustomAppBarContainer(
       title: 'FAQ',
-      messmanagment: false,
+      isMessManagement: false,
       contentWidgets: [
         Container(
           height: 570.h,

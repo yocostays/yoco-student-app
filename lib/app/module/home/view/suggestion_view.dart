@@ -22,9 +22,10 @@ class _SuggestionPageState extends State<SuggestionPage> {
   final int maxLength = 200;
   @override
   Widget build(BuildContext context) {
-    return CutomAppBarContainer(
+    return CustomAppBarContainer(
         title: "SUGGESTIONS",
-        messmanagment: false,
+      
+        isMessManagement: false,
         contentWidgets: [
           SizedBox(
             width: 350.w,

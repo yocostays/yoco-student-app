@@ -11,21 +11,22 @@ class NoticeBoardCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FlutterCarousel(
-      options: CarouselOptions(
-        height: 150.h,
-        enlargeCenterPage: true,
-        enableInfiniteScroll: true,
-        autoPlay: true,
-      ),
-      items: noticeCards.map((card) {
-        return Builder(
-          builder: (BuildContext context) {
-            return card;
-          },
-        );
-      }).toList(),
-    );
+    return Scaffold();
+    // FlutterCarousel(
+    //   options: CarouselOptions(
+    //     height: 150.h,
+    //     enlargeCenterPage: true,
+    //     enableInfiniteScroll: true,
+    //     autoPlay: true,
+    //   ),
+    //   items: noticeCards.map((card) {
+    //     return Builder(
+    //       builder: (BuildContext context) {
+    //         return card;
+    //       },
+    //     );
+    //   }).toList(),
+    // );
   }
 }
 

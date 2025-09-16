@@ -25,9 +25,9 @@ class _SeeAllState extends State<SeeAll> {
 
   @override
   Widget build(BuildContext context) {
-    return CutomAppBarContainer(
+    return CustomAppBarContainer(
       title: 'See All Menu',
-      messmanagment: false,
+      isMessManagement: false,
       contentWidgets: [
         Container(
           height: 570.h,

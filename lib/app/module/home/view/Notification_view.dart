@@ -13,9 +13,9 @@ class NotificationView extends StatefulWidget {
 class _NotificationViewState extends State<NotificationView> {
   @override
   Widget build(BuildContext context) {
-    return CutomAppBarContainer(
+    return CustomAppBarContainer(
       title: 'NOTIFICATION',
-      messmanagment: false,
+      isMessManagement: false,
       contentWidgets: [
         Container(
           height: 570.h,

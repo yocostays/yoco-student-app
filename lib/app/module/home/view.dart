@@ -13,8 +13,10 @@ import 'package:yoco_stay_student/app/module/home/widgets/info_widget.dart';
 import 'package:yoco_stay_student/app/module/home/widgets/today_menu_section.dart';
 import 'package:yoco_stay_student/app/module/profile/controller/controller.dart';
 
-import 'package:yoco_stay_student/app/routes/routes.dart';
+
 import 'package:yoco_stay_student/app/globals.dart' as globals;
+
+
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -27,6 +29,7 @@ class _DashboardPageState extends State<DashboardPage> {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
   final ProfileController profileController = ProfileController();
   final HomeController homeController = Get.put(HomeController());
+  final DrawerArrowController drawerArrowCtrl = Get.put(DrawerArrowController()); // ✅ reuse controller
 
   @override
   void initState() {
@@ -46,6 +49,7 @@ class _DashboardPageState extends State<DashboardPage> {
             key: scaffoldKey,
             backgroundColor: AppColor.primary,
             drawerScrimColor: Colors.black.withOpacity(0.3),
+
             endDrawer: const CustomDrawer(),
             body: Stack(
               children: [
@@ -160,48 +164,48 @@ class _DashboardPageState extends State<DashboardPage> {
                                 SizedBox(
                                   height: 10.h,
                                 ),
-                                Row(
+                                const Row(
                                   // mainAxisAlignment:
                                   //     MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: () {
-                                          Get.toNamed(AppRoute.leavepage);
-                                        },
-                                        child: Container(
-                                            height: 42.h,
-                                            width: 156.w,
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(10.r),
-                                              color: AppColor.white,
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Image.asset(
-                                                  "assets/images/drawer/leave.png",
-                                                  scale: 6,
-                                                ),
-                                                SizedBox(
-                                                  width: 5.h,
-                                                ),
-                                                Text(
-                                                  "Leave",
-                                                  style: AppTextTheme
-                                                      .textTheme.displayMedium
-                                                      ?.copyWith(
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: AppColor
-                                                              .textblack),
-                                                ),
-                                              ],
-                                            )),
-                                      ),
-                                    ),
+                                    // Expanded(
+                                    //   child: InkWell(
+                                    //     onTap: () {
+                                    //       Get.toNamed(AppRoute.leavepage);
+                                    //     },
+                                    //     child: Container(
+                                    //         height: 42.h,
+                                    //         width: 156.w,
+                                    //         decoration: BoxDecoration(
+                                    //           borderRadius:
+                                    //               BorderRadius.circular(10.r),
+                                    //           color: AppColor.white,
+                                    //         ),
+                                    //         child: Row(
+                                    //           mainAxisAlignment:
+                                    //               MainAxisAlignment.center,
+                                    //           children: [
+                                    //             Image.asset(
+                                    //               "assets/images/drawer/leave.png",
+                                    //               scale: 6,
+                                    //             ),
+                                    //             SizedBox(
+                                    //               width: 5.h,
+                                    //             ),
+                                    //             Text(
+                                    //               "Leave",
+                                    //               style: AppTextTheme
+                                    //                   .textTheme.displayMedium
+                                    //                   ?.copyWith(
+                                    //                       fontWeight:
+                                    //                           FontWeight.w700,
+                                    //                       color: AppColor
+                                    //                           .textblack),
+                                    //             ),
+                                    //           ],
+                                    //         )),
+                                    //   ),
+                                    // ),
                                     // InkWell(
                                     //   onTap: () {
                                     //     // Utils.showAlertDialog(context, 'Alert',
@@ -252,22 +256,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                 SizedBox(
                                   height: 40.h,
                                 ),
-
-                                // // Notification ==================================
-                                // NotificationSection(),
-                                // SizedBox(
-                                //   height: 10.h,
-                                // ),
-                                // PollSection(),
-                                // //Event =================
-                                // SizedBox(
-                                //   height: 10.h,
-                                // ),
-                                // EventSection(),
-                                // SizedBox(height: 30),
-                                // SizedBox(
-                                //   height: 80.h,
-                                // ),
                               ],
                             ),
                           ),
@@ -287,39 +275,36 @@ class _DashboardPageState extends State<DashboardPage> {
                 // ),
                 Positioned(
                   right: 15,
-                  top: 340.h,
-                  child: GestureDetector(
-                    onTap: () {
-                      scaffoldKey.currentState?.openEndDrawer();
-                    },
-                    child: Container(
-                      width: 30.h,
-                      height: 40.h,
-                      decoration: const BoxDecoration(
-                        color: AppColor.primary,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(30),
-                          bottomLeft: Radius.circular(30),
+                  top: 310.h,
+                  child: Obx(() {
+                    return GestureDetector(
+                      onTap: () {
+                        scaffoldKey.currentState?.openEndDrawer();
+                      },
+                      child: Container(
+                        width: 30.h,
+                        height: 35.h,
+                        decoration: const BoxDecoration(
+                          color: AppColor.primary,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            bottomLeft: Radius.circular(30),
+                          ),
+                        ),
+                        child: Transform.translate(
+                          offset: Offset(drawerArrowCtrl.offsetX.value, 0),
+                          child: Icon(
+                            Icons.chevron_left,
+                            color: Colors.white,
+                            size: 24.h,
+                          ),
                         ),
                       ),
-                      child: Icon(
-                        Icons.chevron_left,
-                        color: Colors.white,
-                        size: 24.h,
-                      ),
-                    ),
-                  ),
+                    );
+                  }),
                 ),
               ],
             ),
-            // floatingActionButtonLocation:
-            //     FloatingActionButtonLocation.miniCenterDocked,
-            // floatingActionButton: const CenterButton(
-            //   home: true,
-            // ),
-            // bottomNavigationBar: const BottomNavigation(
-            //   home: true,
-            // ),
           ),
         );
       },

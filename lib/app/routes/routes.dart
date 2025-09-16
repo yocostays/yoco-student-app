@@ -48,4 +48,6 @@ class AppRoute {
   static const Bookedtickets = "/Camcel-tickets";
   static const EditTicketsPage = "/Edit-tickets-Page";
   static const MealStatusTab = "/Tab-tickets-Page";
+
+  static Null get communityPage => null;
 }

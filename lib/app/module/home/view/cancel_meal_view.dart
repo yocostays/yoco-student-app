@@ -161,9 +161,9 @@ class _MessManagementScreenState extends State<MessManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return CutomAppBarContainer(
+    return CustomAppBarContainer(
         title: "CANCEL MEAL",
-        messmanagment: false,
+        isMessManagement: false,
         contentWidgets: [
           Container(
             height: 570.h,

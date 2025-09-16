@@ -18,13 +18,11 @@ import 'package:yoco_stay_student/app/module/onboarding/view/login_signup.dart';
 import 'package:yoco_stay_student/app/routes/routes.dart';
 import 'package:yoco_stay_student/app/utils/utils.dart';
 
-class LeaveController extends GetxController
-     {
+class LeaveController extends GetxController {
   SharedPreferences? prefs;
 
   //<================= Common Tabbar =================>
   late TabController getpasstabController;
-
 
   //<================= Common Controllers & Variables =================>
   // NOTE: hold possibly-null items, but we'll always clean/normalize before using.
@@ -82,77 +80,97 @@ class LeaveController extends GetxController
   final TextEditingController selectedPurpose = TextEditingController();
   RxBool LeaveCreating = false.obs;
 
+  /// Submit Leave: now sends days (int) and hours/minutes (raw) and updates totaldate text
   Future<void> SubmitLeaveApplication() async {
-  prefs = await SharedPreferences.getInstance();
+    prefs = await SharedPreferences.getInstance();
 
-  // Clean/sort/normalize selected days
-  final days = _normalizedSelectedDays();
-  if (days.isEmpty) {
-    Utils.showToast(
-      message: "No days selected for leave application.",
-      gravity: ToastGravity.BOTTOM,
-      textColor: Colors.white,
-      fontsize: 16,
-    );
-    return;
-  }
-
-  final DateTime startDate = days.first;
-  final DateTime endDate = days.last;
-
-  // Adjusted calculation: exclude last day if required
-  final int daysCount = calculateDaysDifference(startDate, endDate);
-
-  try {
-    LeaveCreating(true);
-
-    final body = {
-      "categoryId": selectedPurpose.text,
-      // Always send UTC to avoid backend shifting date
-      "startDate": startDate.toUtc().toIso8601String(),
-      "endDate": endDate.toUtc().toIso8601String(),
-      "days": daysCount,
-      "description": discription.text.trim(),
-    };
-
-    debugPrint("Body "
-        "\n╟ categoryId: ${body["categoryId"]}"
-        "\n╟ startDate: ${body["startDate"]}"
-        "\n╟ endDate: ${body["endDate"]}"
-        "\n╟ days: ${body["days"]}"
-        "\n╟ description: ${body["description"]}");
-
-    final response = await BaseService().postData(
-      endPoint: ApiRoutes().SubmitLeaveCategory,
-      isTokenRequired: true,
-      body: body,
-    );
-
-    if (response.data['statusCode'] == 200) {
-      // clear all controllers after success
-      Clear();
-
-      // refresh leave list
-      getLeaveDataList("pending", "leave", loadMore: false);
-
-      // navigate back
-      Get.offAllNamed(AppRoute.leavepage);
-    }
-  } on DioException catch (e) {
-    _handleUnauthorized(e);
-
-    if (e.response?.data["statusCode"] == 400) {
+    // Clean/sort/normalize selected days (date-only)
+    final days = _normalizedSelectedDays();
+    if (days.isEmpty) {
       Utils.showToast(
-        message: e.response?.data["message"],
+        message: "No days selected for leave application.",
         gravity: ToastGravity.BOTTOM,
         textColor: Colors.white,
         fontsize: 16,
       );
+      return;
     }
-  } finally {
-    LeaveCreating(false);
+
+    // start/end using normalized dates (midnight) for day-count logic
+    final DateTime startDate = days.first;
+    final DateTime endDate = days.last;
+
+    // For hours/minutes use time-aware selected days (preserve time if UI set it)
+    final sortedWithTime = _sortedSelectedDays();
+    DateTime startWithTime =
+        sortedWithTime.isNotEmpty ? sortedWithTime.first : startDate;
+    DateTime endWithTime = sortedWithTime.isNotEmpty ? sortedWithTime.last : endDate;
+
+    // calculate day-only count (keeps your original behavior)
+    final int daysCount = calculateDaysDifference(startDate, endDate);
+
+    // calculate hours/minutes based on actual DateTime difference
+    final Duration diff = endWithTime.difference(startWithTime);
+    final int hoursCount = diff.inHours;
+    final int minutesCount = diff.inMinutes.remainder(60);
+
+    // update UI-friendly totaldate text
+    totaldate.text = formatDurationString(startWithTime, endWithTime);
+
+    try {
+      LeaveCreating(true);
+
+      final body = {
+        "categoryId": selectedPurpose.text,
+        // Always send UTC to avoid backend shifting date
+        "startDate": startWithTime.toUtc().toIso8601String(),
+        "endDate": endWithTime.toUtc().toIso8601String(),
+        "days": daysCount,
+        "hours": hoursCount,
+        "minutes": minutesCount,
+        "description": discription.text.trim(),
+      };
+
+      debugPrint("Body "
+          "\n╟ categoryId: ${body["categoryId"]}"
+          "\n╟ startDate: ${body["startDate"]}"
+          "\n╟ endDate: ${body["endDate"]}"
+          "\n╟ days: ${body["days"]}"
+          "\n╟ hours: ${body["hours"]}"
+          "\n╟ minutes: ${body["minutes"]}"
+          "\n╟ description: ${body["description"]}");
+
+      final response = await BaseService().postData(
+        endPoint: ApiRoutes().SubmitLeaveCategory,
+        isTokenRequired: true,
+        body: body,
+      );
+
+      if (response.data['statusCode'] == 200) {
+        // clear all controllers after success
+        Clear();
+
+        // refresh leave list
+        getLeaveDataList("pending", "leave", loadMore: false);
+
+        // navigate back
+        Get.offAllNamed(AppRoute.leavepage);
+      }
+    } on DioException catch (e) {
+      _handleUnauthorized(e);
+
+      if (e.response?.data["statusCode"] == 400) {
+        Utils.showToast(
+          message: e.response?.data["message"],
+          gravity: ToastGravity.BOTTOM,
+          textColor: Colors.white,
+          fontsize: 16,
+        );
+      }
+    } finally {
+      LeaveCreating(false);
+    }
   }
-}
 
   //<================= Late Coming =================>
   final TextEditingController Noofhours = TextEditingController();
@@ -208,6 +226,11 @@ class LeaveController extends GetxController
       return;
     }
 
+    // compute diff
+    final Duration diff = EndTime!.difference(StartTime!);
+    final int hours = diff.inHours;
+    final int minutes = diff.inMinutes.remainder(60);
+
     try {
       LateComingCreating(true);
 
@@ -215,7 +238,9 @@ class LeaveController extends GetxController
         "leaveType": "late coming",
         "startDate": DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(StartTime!),
         "endDate": DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(EndTime!),
-        "hours": Noofhours.text.trim().replaceAll(" ", ""),
+        // send structured numeric values rather than a string like "2 : 30"
+        "hours": hours,
+        "minutes": minutes,
         "description": discription.text.trim(),
       };
 
@@ -396,53 +421,53 @@ class LeaveController extends GetxController
 
   //<================= Generic pagination handler (shared by all tabs) =================>
   Future<void> _handlePagedList({
-  required String status,
-  required String section,
-  required RxInt page,
-  required RxList<LeaveListModel> list,
-  required RxInt totalCount,
-  required RxBool loading,
-  required RxBool isMoreLoading,
-  required RxBool hasMoreData,
-  required bool loadMore,
-}) async {
-  // prevent overlapping calls
-  if (loading.value || isMoreLoading.value) return;
+    required String status,
+    required String section,
+    required RxInt page,
+    required RxList<LeaveListModel> list,
+    required RxInt totalCount,
+    required RxBool loading,
+    required RxBool isMoreLoading,
+    required RxBool hasMoreData,
+    required bool loadMore,
+  }) async {
+    // prevent overlapping calls
+    if (loading.value || isMoreLoading.value) return;
 
-  if (loadMore) {
-    if (!hasMoreData.value) return;
-    isMoreLoading(true);
-    page.value++;
-  } else {
-    loading(true);
-    page.value = 1;
-    hasMoreData(true);
-    totalCount.value = 0;
-    list.clear();
-  }
-
-  try {
-    final result = await _fetchLeavePage(status, section, page.value);
-
-    if (result.count != null && result.count! > 0) {
-      totalCount.value = result.count!;
+    if (loadMore) {
+      if (!hasMoreData.value) return;
+      isMoreLoading(true);
+      page.value++;
+    } else {
+      loading(true);
+      page.value = 1;
+      hasMoreData(true);
+      totalCount.value = 0;
+      list.clear();
     }
 
-    if (result.items.isNotEmpty) {
-      list.addAll(result.items);
+    try {
+      final result = await _fetchLeavePage(status, section, page.value);
 
-      if ((totalCount.value > 0 && list.length >= totalCount.value) ||
-          result.items.length < _pageSize) {
+      if (result.count != null && result.count! > 0) {
+        totalCount.value = result.count!;
+      }
+
+      if (result.items.isNotEmpty) {
+        list.addAll(result.items);
+
+        if ((totalCount.value > 0 && list.length >= totalCount.value) ||
+            result.items.length < _pageSize) {
+          hasMoreData(false);
+        }
+      } else {
         hasMoreData(false);
       }
-    } else {
-      hasMoreData(false);
+    } finally {
+      loading(false);
+      isMoreLoading(false);
     }
-  } finally {
-    loading(false);
-    isMoreLoading(false);
   }
-}
 
   //<================= Single Leave Status =================>
   RxList<SingleLeaveStatusModel> SingleLeaveStatusData =
@@ -580,41 +605,25 @@ class LeaveController extends GetxController
   }
 
   //<================= Utils =================>
-  void _handleUnauthorized(DioException e) async {
-    if (e.response?.data is Map && e.response?.data["statusCode"] == 401) {
-      await TokenStorage.removeToken();
-      await TokenStorage.removeusername();
-      await TokenStorage.removeuserid();
-      Get.offAll(const LoginSignUp());
-    }
-    debugPrint("API Error: ${e.message} - ${e.response?.data}");
-  }
+ 
 
   void Clear() {
     selectedDay.clear();
-    
-    
     discription.clear();
     selectedPurpose.clear();
     TimeRange.clear();
     firstdateDate.clear();
     lastdateDate.clear();
+    firstdatetime.clear();
+    lastdatetime.clear();
     totaldate.clear();
+    Noofhours.clear();
+    selectDaterang.clear();
     StartTime = null;
     EndTime = null;
   }
 
   //<================= Leave page text helpers =================>
-  final List<String> purposes = const [
-    "Visiting Parents",
-    "Medical Leave",
-    "Emergency",
-    "Family Function",
-    "Vacation",
-    "Festival",
-    "Competitive Exam",
-    "Other",
-  ];
 
   String formatTimeRange(
       BuildContext context, TimeOfDay? startTime, TimeOfDay? endTime) {
@@ -650,28 +659,71 @@ class LeaveController extends GetxController
 
   // === DATE HELPERS (normalized, consistent) ===
 
-  /// Returns a date with time set to 00:00:00 (local).
-  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  /// Clean, sort, and normalize the currently selected days.
+  /// Normalize and sort selected days (date-only)
   List<DateTime> _normalizedSelectedDays() {
     final cleaned = selectedDay.whereType<DateTime>().toList();
     cleaned.sort();
     return cleaned.map(_dateOnly).toList();
   }
 
-  /// Formats and also updates the text controllers consistently.
-  /// Counts days as: max(1, end - start in days) so 15→18 = 3, 15→15 = 1.
+  /// Sort selected days with time preserved
+  List<DateTime> _sortedSelectedDays() {
+    final cleaned = selectedDay.whereType<DateTime>().toList();
+    cleaned.sort();
+    return cleaned;
+  }
+
+  /// Format duration string for UI
+  String formatDurationString(DateTime start, DateTime end) {
+    if (end.isBefore(start)) return "0 min";
+    final diff = end.difference(start);
+    final totalMinutes = diff.inMinutes;
+
+    if (totalMinutes < 60) return "$totalMinutes min";
+    if (totalMinutes < 24 * 60) {
+      final hours = diff.inHours;
+      final minutes = diff.inMinutes.remainder(60);
+      if (minutes > 0) return "$hours hr $minutes min";
+      return "$hours hr";
+    } else {
+      final days = totalMinutes ~/ (24 * 60);
+      final hours = (totalMinutes % (24 * 60)) ~/ 60;
+      final minutes = totalMinutes % 60;
+      final parts = <String>[];
+      if (days > 0) parts.add("$days day${days > 1 ? 's' : ''}");
+      if (hours > 0) parts.add("$hours hr");
+      if (minutes > 0) parts.add("$minutes min");
+      return parts.join(" ");
+    }
+  }
+
+  int calculateDaysDifference(DateTime start, DateTime end) {
+    final diff = end.difference(start).inDays;
+    return diff <= 0 ? 1 : diff;
+  }
+
+  int calculateHoursDifference(DateTime start, DateTime end) {
+    final diff = end.difference(start);
+    return diff.inHours % 24;
+  }
+
+  int calculateMinutesDifference(DateTime start, DateTime end) {
+    final diff = end.difference(start);
+    return diff.inMinutes % 60;
+  }
+
   String formatDateRange(DateTime startDate, DateTime endDate) {
-    final s = _dateOnly(startDate);
-    final e = _dateOnly(endDate);
-    if (s.isAfter(e)) return '';
+    final sorted = _sortedSelectedDays();
+    final DateTime s = sorted.isNotEmpty ? sorted.first : startDate;
+    final DateTime e = sorted.isNotEmpty ? sorted.last : endDate;
 
-    final noOfDays = calculateDaysDifference(s, e);
-    totaldate.text = "$noOfDays";
+    totaldate.text = formatDurationString(sorted.isNotEmpty ? sorted.first : s,
+        sorted.isNotEmpty ? sorted.last : e);
 
-    final formattedStartDate = DateFormat('MMM dd,yyyy').format(s);
-    final formattedEndDate = DateFormat('MMM dd,yyyy').format(e);
+    final formattedStartDate = DateFormat('MMM dd, yyyy').format(s);
+    final formattedEndDate = DateFormat('MMM dd, yyyy').format(e);
 
     if (s.isAtSameMomentAs(e)) {
       firstdateDate.text = formattedStartDate;
@@ -687,16 +739,14 @@ class LeaveController extends GetxController
     }
   }
 
-  /// Day count policy:
-  /// - Normalize both to 00:00:00.
-  /// - Count = max(1, (end - start).inDays).
-  ///   - 15 → 18 => 3
-  ///   - 15 → 15 => 1
-  int calculateDaysDifference(DateTime startDate, DateTime endDate) {
-    final s = _dateOnly(startDate);
-    final e = _dateOnly(endDate);
-    final diff = e.difference(s).inDays;
-    return diff <= 0 ? 1 : diff;
+  void _handleUnauthorized(DioException e) async {
+    if (e.response?.data is Map && e.response?.data["statusCode"] == 401) {
+      await TokenStorage.removeToken();
+      await TokenStorage.removeusername();
+      await TokenStorage.removeuserid();
+      Get.offAll(const LoginSignUp());
+    }
+    debugPrint("API Error: ${e.message} - ${e.response?.data}");
   }
 }
 

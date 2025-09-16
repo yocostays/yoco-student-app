@@ -4,180 +4,141 @@ import 'package:get/get.dart';
 import 'package:yoco_stay_student/app/core/values/colors.dart';
 import 'package:yoco_stay_student/app/module/complaint_managment/widgets/stepper_class.dart';
 
-class TimeLineDialogBox extends StatefulWidget {
-  const TimeLineDialogBox({
-    super.key,
-  });
+class TimelineController extends GetxController {
+  var currentStep = 1.obs;
+  late List<StepperData> stepsData;
 
   @override
-  State<TimeLineDialogBox> createState() => _TimeLineDialogBoxState();
+  void onInit() {
+    super.onInit();
+    stepsData = [
+      StepperData(label: 'Order Placed', description: 'Your order is placed.'),
+      StepperData(label: 'Order Confirmed', description: 'Order confirmed.'),
+      StepperData(label: 'Order Processed', description: 'Processing started.'),
+      StepperData(label: 'Ready to Pickup', description: 'Pickup available.'),
+    ];
+  }
+
+  void updateStep(int step) {
+    if (step <= stepsData.length) {
+      currentStep.value = step;
+    }
+  }
 }
 
-class _TimeLineDialogBoxState extends State<TimeLineDialogBox>
-    with SingleTickerProviderStateMixin {
-  var currentStep = 1;
-  var totalSteps = 0;
-  late List<StepperData> stepsData;
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
 
-  @override
-  void initState() {
-    super.initState();
-    stepsData = [
-      StepperData(
-        label: 'Order Placed',
-        description:
-            'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec efficitur risus est, sed consequat libero luctus vitae. Duis ultrices magna quis risus porttitor luctus. Nulla vel tempus nisl, ultricies congue lectus. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.',
-      ),
-      StepperData(
-        label: 'Order Confirmed',
-        description:
-            'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec efficitur risus est, sed consequat libero luctus vitae. Duis ultrices magna quis risus porttitor luctus. Nulla vel tempus nisl, ultricies congue lectus. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.',
-      ),
-      StepperData(
-        label: 'Order Processed',
-        description:
-            'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec efficitur risus est, sed consequat libero luctus vitae. Duis ultrices magna quis risus porttitor luctus. Nulla vel tempus nisl, ultricies congue lectus. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.',
-      ),
-      StepperData(
-        label: 'Ready to Pickup',
-        description:
-            'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec efficitur risus est, sed consequat libero luctus vitae. Duis ultrices magna quis risus porttitor luctus. Nulla vel tempus nisl, ultricies congue lectus. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.',
-      ),
-    ];
-    totalSteps = stepsData.length;
-
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeIn,
-    );
-
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class TimeLineDialogBox extends StatelessWidget {
+  const TimeLineDialogBox({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 190),
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.r),
-            color: Colors.white,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final controller = Get.put(TimelineController());
+
+    return Center(
+      child: Container(
+        width: Get.width * 0.9,
+        height: Get.height * 0.6,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20.r),
+          color: Colors.white,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Tracking",
-                      style: Theme.of(context)
-                          .textTheme
-                          .displayLarge
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Get.back();
-                      },
-                      child: const Icon(
-                        Icons.close,
-                        size: 20,
-                        color: AppColor.textprimary,
-                      ),
-                    )
-                  ],
+                Text(
+                  "Tracking",
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                SizedBox(
-                  height: 5.h,
-                ),
-                Divider(
-                  color: Colors.black.withOpacity(0.1),
-                ),
-                SizedBox(
-                  height: 5.h,
-                ),
-                Flexible(
-                  child: ListView.builder(
-                    // physics: NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: stepsData.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20.r,
-                                backgroundColor: AppColor.textprimary,
-                                child: Text(
-                                  "${index + 1}",
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 10.w,
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    stepsData[index].label,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .displayLarge
-                                        ?.copyWith(fontWeight: FontWeight.w700),
-                                  ),
-                                  Text(
-                                    "Lorem Ipsum is simply dummy",
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
-                                        ?.copyWith(fontWeight: FontWeight.w400),
-                                    maxLines: 2,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          index == (stepsData.length - 1)
-                              ? Container()
-                              : Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 22),
-                                  child: DottedDivider(
-                                    Dottedcolor: index + 1 <= currentStep
-                                        ? AppColor.primary
-                                        : Colors.black.withOpacity(0.2),
-                                  ),
-                                ),
-                        ],
-                      );
-                    },
-                  ),
+                GestureDetector(
+                  onTap: () => Get.back(),
+                  child: const Icon(Icons.close,
+                      size: 20, color: AppColor.textprimary),
                 )
               ],
             ),
-          ),
+            const Divider(),
+            SizedBox(height: 10.h),
+
+            // Steps List
+            Expanded(
+              child: Obx(
+                () => ListView.builder(
+                  itemCount: controller.stepsData.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    final step = controller.stepsData[index];
+                    final isCompleted = index + 1 <= controller.currentStep.value;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20.r,
+                              backgroundColor: isCompleted
+                                  ? AppColor.primary
+                                  : Colors.grey.withOpacity(0.3),
+                              child: Text(
+                                "${index + 1}",
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            SizedBox(width: 10.w),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  step.label,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: isCompleted
+                                              ? AppColor.primary
+                                              : AppColor.textblack),
+                                ),
+                                Text(
+                                  step.description??"No description available",
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                          fontWeight: FontWeight.w400,
+                                          color: Colors.grey[600]),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        // Connector line
+                        if (index < controller.stepsData.length - 1)
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 22),
+                            child: DottedDivider(
+                              dottedColor: isCompleted
+                                  ? AppColor.primary
+                                  : Colors.black.withOpacity(0.2),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -185,24 +146,23 @@ class _TimeLineDialogBoxState extends State<TimeLineDialogBox>
 }
 
 class DottedDivider extends StatelessWidget {
-  final Color? Dottedcolor;
-  const DottedDivider({
-    super.key,
-    required this.Dottedcolor,
-  });
+  final Color dottedColor;
+  const DottedDivider({super.key, required this.dottedColor});
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 50, // Adjust height as needed
+      height: 50,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(
-            7,
-            (index) => Container(
-                  width: 2,
-                  height: 5,
-                  color: Dottedcolor, // Adjust color as needed
-                )),
+          7,
+          (index) => Container(
+            width: 2,
+            height: 5,
+            color: dottedColor,
+          ),
+        ),
       ),
     );
   }

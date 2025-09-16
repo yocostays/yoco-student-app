@@ -18,9 +18,9 @@ class MyAttendance extends StatefulWidget {
 class _MyAttendanceState extends State<MyAttendance> {
   @override
   Widget build(BuildContext context) {
-    return CutomAppBarContainer(
+    return CustomAppBarContainer(
       title: "MY ATTENDANCE ",
-      messmanagment: false,
+      isMessManagement: false,
       contentWidgets: [
         Container(
           height: 670.h,

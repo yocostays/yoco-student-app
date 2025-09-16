@@ -127,9 +127,9 @@ class _BookMealScreenState extends State<BookMealScreen> {
             ),
           )),
       body: Obx(
-        () => CutomAppBarContainer(
+        () => CustomAppBarContainer(
             title: "BOOK MEALS",
-            messmanagment: false,
+            isMessManagement: false,
             isScroll: true,
             contentWidgets: [
               homeController.BookedDateLoading.value

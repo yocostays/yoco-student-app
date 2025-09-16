@@ -23,10 +23,10 @@ class _MessAttendanceState extends State<MessAttendance> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        CutomAppBarContainer(
+        CustomAppBarContainer(
           isScroll: false,
           title: "MESS ATTENDANCE",
-          messmanagment: false,
+          isMessManagement: false,
           contentWidgets: [
             Container(
               height: 520.h,
